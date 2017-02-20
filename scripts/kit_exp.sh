@@ -18,14 +18,28 @@ process_name='python'
 ### Utils
 remote_cmd()
 {
-    ssh -n -l ${username} ${1} ${2}
+    ssh -n -l ${username} ${1} "${2}"
 }
 
 
 remote_bg_cmd()
 {
-    ssh -n -f -l ${username} ${1} ${2}
+    ssh -n -f -l ${username} ${1} "${2}" >/dev/null 2&>1
 }
+
+
+function count_machine()
+{
+    local total=0
+    while IFS= read -r line; do
+        if [ "${line:0:1}" != "#" ]
+        then
+            (( total += 1 ))
+        fi
+    done < ${machine_list}
+    echo ${total}
+}
+ 
 
 
 ### UDFs
@@ -36,10 +50,10 @@ install_python()
 
 gen_script()
 {
-    ps_list=""
-    worker_list=""
+    local ps_list=""
+    local worker_list=""
     
-    index=0    
+    local index=0    
     while IFS= read -r line; do
         if [ "${line:0:1}" != "#" ]
         then
@@ -57,9 +71,9 @@ gen_script()
     while IFS= read -r line; do
         if [ "${line:0:1}" != "#" ]
         then
-            remote_cmd ${line} "echo '#!/bin/bash' > ${run_path}/s.sh; chmod +x ${run_path}/s.sh; echo cd ${run_path} >> ${run_path}/s.sh; echo python cnn/multi_node_async_benchmark.py --ps_hosts=${ps_list} --worker_hosts=${worker_list} --job_name=ps --task_index=${index} >> ${run_path}/s.sh"
+            remote_cmd ${line} "echo '#!/usr/bin/env bash' > ${run_path}/s.sh; chmod +x ${run_path}/s.sh; echo cd ${run_path} >> ${run_path}/s.sh; echo python cnn/multi_node_async_benchmark.py --ps_hosts=${ps_list} --worker_hosts=${worker_list} --job_name=ps --task_index=${index} >> ${run_path}/s.sh"
             
-            remote_cmd ${line} "echo '#!/bin/bash' > ${run_path}/w.sh; chmod +x ${run_path}/w.sh; echo cd ${run_path} >> ${run_path}/w.sh; echo python cnn/multi_node_async_benchmark.py --ps_hosts=${ps_list} --worker_hosts=${worker_list} --job_name=worker --task_index=${index} >> ${run_path}/w.sh"
+            remote_cmd ${line} "echo '#!/usr/bin/env bash' > ${run_path}/w.sh; chmod +x ${run_path}/w.sh; echo cd ${run_path} >> ${run_path}/w.sh; echo python cnn/multi_node_async_benchmark.py --ps_hosts=${ps_list} --worker_hosts=${worker_list} --job_name=worker --task_index=${index} >> ${run_path}/w.sh"
             (( index += 1 ))
         fi
     done < ${machine_list}
@@ -68,7 +82,7 @@ gen_script()
 
 start_server()
 {
-     while IFS= read -r line; do
+    while IFS= read -r line; do
         if [ "${line:0:1}" != "#" ]
         then
             remote_bg_cmd ${line} "${run_path}/s.sh &"
@@ -78,12 +92,20 @@ start_server()
 }
 
 
-start_worker()
+function start_worker()
 {
-     while IFS= read -r line; do
+    local mc=$( count_machine )
+    local index=0
+    while IFS= read -r line; do
         if [ "${line:0:1}" != "#" ]
         then
-            echo remote_bg_cmd ${line} "${run_path}/w.sh &"
+            (( index += 1))
+            if [ ${index} -lt ${mc} ]
+            then
+                remote_bg_cmd ${line} "${run_path}/w.sh &"
+            else
+                remote_cmd ${line} "${run_path}/w.sh"
+            fi
         fi
     done < ${machine_list}
     
@@ -156,34 +178,34 @@ usage ()
 # main ()                  #
 
 case "${1}" in
-"auth") auth
-;;
+    "auth") auth
+    ;;
 
-"setup" | "st") setup
-;;
+    "setup" | "st") setup
+    ;;
 
-"genscript" | "gs") gen_script
-;;
+    "genscript" | "gs") gen_script
+    ;;
 
-"copyscript" | "cs") copy_script
-;;
+    "copyscript" | "cs") copy_script
+    ;;
 
-"startall" | "sa") startall
-;;
+    "startall" | "sa") startall
+    ;;
 
-"startserver" | "ss") start_server
-;;
+    "startserver" | "ss") start_server
+    ;;
 
-"startworker" | "sw") start_worker
-;;
+    "startworker" | "sw") start_worker
+    ;;
 
-"kill" | "k") kill_process
-;;
+    "kill" | "k") kill_process
+    ;;
 
-"help" | "h" | "") usage
-;;
+    "help" | "h" | "") usage
+    ;;
 
-*) echo "Invalid command ${1}!"
-;;
+    *) echo "Invalid command ${1}!"
+    ;;
 
 esac
