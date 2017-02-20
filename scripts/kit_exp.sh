@@ -44,11 +44,11 @@ gen_script()
         if [ "${line:0:1}" != "#" ]
         then
             if [ ${index} -gt 0 ]; then
-                ps_list="${ps_list},"
-                worker_list="${worker_list},"
+                ps_list+=','
+                worker_list+=','
             fi
-            ps_list="${ps_list}${line}:${ps_port}"
-            worker_list="${worker_list}${line}:${worker_port}"
+            ps_list+="${line}:${ps_port}"
+            worker_list+="${line}:${worker_port}"
             (( index += 1 ))
         fi
     done < ${machine_list}
