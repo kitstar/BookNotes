@@ -5,7 +5,7 @@ username="kit"
 password="19870817"
 
 host_ip="192.168.1.120"
-machine_list=machine_list.txt
+machine_list="machine_list.txt"
 script_path="/home/kit/exp/dnn"
 run_path="/home/kit/run/dnn"
 python_path="~/anaconda2"
@@ -16,13 +16,13 @@ process_name='python'
 
 
 ### Utils
-remote_cmd()
+function remote_cmd()
 {
     ssh -n -l ${username} ${1} "${2}"
 }
 
 
-remote_bg_cmd()
+function remote_bg_cmd()
 {
     ssh -n -f -l ${username} ${1} "${2}" >/dev/null 2&>1
 }
@@ -80,11 +80,12 @@ gen_script()
 }
 
 
-start_server()
+function start_server()
 {
     while IFS= read -r line; do
         if [ "${line:0:1}" != "#" ]
         then
+            echo "Start server process ${line}"
             remote_bg_cmd ${line} "${run_path}/s.sh &"
         fi
     done < ${machine_list}
@@ -100,6 +101,7 @@ function start_worker()
         if [ "${line:0:1}" != "#" ]
         then
             (( index += 1))
+            echo "Start worker process ${line}"
             if [ ${index} -lt ${mc} ]
             then
                 remote_bg_cmd ${line} "${run_path}/w.sh &"
@@ -112,8 +114,20 @@ function start_worker()
 }
 
 
+function perf_server()
+{
+    echo nothing
+}
+
+
+function perf_worker()
+{
+    ps aux | grep "python" | grep "=worker" | awk '{print $2}' | xargs -i perf record -o "worker.perf" -p {}
+}
+
+
 ### Functions
-kill_process()
+function kill_process()
 {
     while IFS= read -r line; do
         if [ "${line:0:1}" != "#" ]
@@ -129,7 +143,8 @@ setup ()
     install_python
 }
 
-auth()
+
+function auth()
 {
     if [ ! -f "~/.ssh/id_rsa.pub" ]; then
         ssh-keygen -t rsa
@@ -152,7 +167,6 @@ copy_script()
         if [ "${line:0:1}" != "#" ]
         then
             echo "copying scripts to ${line}"
-            #ssh ${username}@${line} "mkdir -p ${run_path}"
             remote_cmd ${line} "mkdir -p ${run_path}"
             scp -r -q -C ${script_path}/* ${username}@${line}:${run_path}
         fi
@@ -162,6 +176,7 @@ copy_script()
 
 startall()
 {
+    kill_process
     start_server
     start_worker
 }
@@ -196,7 +211,13 @@ case "${1}" in
     "startserver" | "ss") start_server
     ;;
 
+    "perfserver" | "ps") perf_server
+    ;;
+
     "startworker" | "sw") start_worker
+    ;;
+
+    "perfworker" | "pw") perf_worker
     ;;
 
     "kill" | "k") kill_process
