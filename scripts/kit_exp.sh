@@ -14,6 +14,8 @@ ps_port=8700
 worker_port=8800
 process_name='python'
 
+server_script_head+="echo '#!/bin/bash' > ${run_path}/s.sh; chmod +x ${run_path}/s.sh; echo cd ${run_path} >> ${run_path}/s.sh;"
+worker_script_head+="echo '#!/bin/bash' > ${run_path}/w.sh; chmod +x ${run_path}/w.sh; echo cd ${run_path} >> ${run_path}/w.sh;"
 
 ### Utils
 function remote_cmd()
@@ -48,7 +50,7 @@ install_python()
     echo "TODO"
 }
 
-gen_script()
+function gen_script()
 {
     local ps_list=""
     local worker_list=""
@@ -67,13 +69,17 @@ gen_script()
         fi
     done < ${machine_list}
     
-    index=0
+    local index=0
     while IFS= read -r line; do
         if [ "${line:0:1}" != "#" ]
         then
-            remote_cmd ${line} "echo '#!/usr/bin/env bash' > ${run_path}/s.sh; chmod +x ${run_path}/s.sh; echo cd ${run_path} >> ${run_path}/s.sh; echo python cnn/multi_node_async_benchmark.py --ps_hosts=${ps_list} --worker_hosts=${worker_list} --job_name=ps --task_index=${index} >> ${run_path}/s.sh"
-            
-            remote_cmd ${line} "echo '#!/usr/bin/env bash' > ${run_path}/w.sh; chmod +x ${run_path}/w.sh; echo cd ${run_path} >> ${run_path}/w.sh; echo python cnn/multi_node_async_benchmark.py --ps_hosts=${ps_list} --worker_hosts=${worker_list} --job_name=worker --task_index=${index} >> ${run_path}/w.sh"
+            local server_cmd=${server_script_head}
+            server_cmd+="echo \"python cnn/multi_node_async_benchmark.py --ps_hosts=${ps_list} --worker_hosts=${worker_list} --job_name=ps --task_index=${index} \" >> ${run_path}/s.sh"
+            remote_cmd ${line} "${server_cmd}"
+
+            local worker_cmd=${worker_script_head}
+            worker_cmd+="echo \"python cnn/multi_node_async_benchmark.py --ps_hosts=${ps_list} --worker_hosts=${worker_list} --job_name=worker --task_index=${index} $*\" >> ${run_path}/w.sh"
+            remote_cmd ${line} "${worker_cmd}"
             (( index += 1 ))
         fi
     done < ${machine_list}
@@ -174,7 +180,7 @@ copy_script()
 }
 
 
-startall()
+function startall()
 {
     kill_process
     start_server
@@ -199,7 +205,9 @@ case "${1}" in
     "setup" | "st") setup
     ;;
 
-    "genscript" | "gs") gen_script
+    "genscript" | "gs") 
+        shift
+        gen_script $*
     ;;
 
     "copyscript" | "cs") copy_script
