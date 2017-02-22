@@ -1,5 +1,8 @@
 #!/bin/bash
 
+### Setting
+enable_perf=1
+
 ### Constantis
 username="kit"
 password="19870817"
@@ -18,6 +21,8 @@ process_name='python'
 server_script_head+="echo '#!/bin/bash' > ${run_path}/s.sh; chmod +x ${run_path}/s.sh; echo cd ${run_path} >> ${run_path}/s.sh;"
 worker_script_head+="echo '#!/bin/bash' > ${run_path}/w.sh; chmod +x ${run_path}/w.sh; echo cd ${run_path} >> ${run_path}/w.sh;"
 
+
+
 ### Utils
 function remote_cmd()
 {
@@ -27,7 +32,7 @@ function remote_cmd()
 
 function remote_bg_cmd()
 {
-    ssh -n -f -l ${username} ${1} "${2}" >/dev/null 2&>1
+    ssh -n -f -l ${username} ${1} "${2}" >/dev/null 2>&1
 }
 
 
@@ -97,7 +102,13 @@ function gen_script()
         if [ "${line:0:1}" != "#" ]
         then
             local worker_cmd=${worker_script_head}
-            worker_cmd+="echo \"python cnn/multi_node_async_benchmark.py --ps_hosts=${ps_list} --worker_hosts=${worker_list} --job_name=worker --task_index=${index} $*\" >> ${run_path}/w.sh"
+            if [ ${enable_perf} -eq 1 ]
+            then
+                worker_cmd+="echo \"perf record -o worker.perf python cnn/multi_node_async_benchmark.py --ps_hosts=${ps_list} --worker_hosts=${worker_list} --job_name=worker --task_index=${index} $*\" >> ${run_path}/w.sh"
+            else
+                worker_cmd+="echo \"python cnn/multi_node_async_benchmark.py --ps_hosts=${ps_list} --worker_hosts=${worker_list} --job_name=worker --task_index=${index} $*\" >> ${run_path}/w.sh"
+            fi
+
             remote_cmd ${line} "${worker_cmd}"
             (( index += 1 ))
         fi

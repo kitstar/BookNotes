@@ -4,6 +4,8 @@
 username="kit"
 password="19870817"
 
+enable_perf=1
+
 host_ip="192.168.1.120"
 server_node_list="s.txt"
 worker_node_list="w.txt"
@@ -27,7 +29,7 @@ function remote_cmd()
 
 function remote_bg_cmd()
 {
-    ssh -n -f -l ${username} ${1} "${2}" >/dev/null 2&>1
+    ssh -n -f -l ${username} ${1} "${2}" >/dev/null 2>&1
 }
 
 
@@ -96,7 +98,12 @@ function gen_script()
         if [ "${line:0:1}" != "#" ]
         then
             local worker_cmd=${worker_script_head}
-            worker_cmd+="echo \"python bm/grpc.py --job_name=worker --ps_hosts=${ps_list} --worker_hosts=${worker_list} --dim2=${1} --num_steps=10 \" >> ${run_path}/w.sh"
+            if [ ${enable_perf} -eq 1 ]
+            then
+                worker_cmd+="echo \"perf record -o worker.perf python bm/grpc.py --job_name=worker --ps_hosts=${ps_list} --worker_hosts=${worker_list} --dim2=${1} --num_steps=30 \" >> ${run_path}/w.sh"
+            else
+                worker_cmd+="echo \"python bm/grpc.py --job_name=worker --ps_hosts=${ps_list} --worker_hosts=${worker_list} --dim2=${1} --num_steps=30 \" >> ${run_path}/w.sh"
+            fi
             remote_cmd ${line} "${worker_cmd}"
             (( index += 1 ))
         fi
