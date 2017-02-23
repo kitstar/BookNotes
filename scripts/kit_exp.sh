@@ -51,9 +51,15 @@ function count_machine()
 
 
 ### UDFs
-install_python()
+function install_python()
 {
-    echo "TODO"
+    while IFS= read -r line; do
+        if [ "${line:0:1}" != "#" ]
+        then
+            echo ${line}
+            (( total += 1 ))
+        fi
+    done < <(sort ${server_node_list} ${worker_node_list} | uniq)
 }
 
 function gen_script()

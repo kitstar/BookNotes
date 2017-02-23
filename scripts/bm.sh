@@ -11,7 +11,7 @@ server_node_list="s.txt"
 worker_node_list="w.txt"
 script_path="/home/kit/exp/dnn"
 run_path="/home/kit/run/dnn"
-python_path="~/anaconda2"
+python_path="/home/kit/anaconda2"
 
 ps_port=8700
 worker_port=8800
@@ -29,7 +29,7 @@ function remote_cmd()
 
 function remote_bg_cmd()
 {
-    ssh -n -f -l ${username} ${1} "${2}" >/dev/null 2>&1
+    ssh -n -f -l ${username} ${1} "{ ${2} } >/dev/null 2>&1 &"
 }
 
 
@@ -48,9 +48,18 @@ function count_machine()
 
 
 ### UDFs
-install_python()
+function install_python()
 {
-    echo "TODO"
+    rm -rf ${python_path}
+    scp -r -q -C ${username}@10.172.140.102:${python_path} ${python_path}
+
+    while IFS= read -r line; do
+        if [ "${line:0:1}" != "#" ] && [ "${line}" != ${host_ip}  ] 
+        then
+            echo ${line}
+            (( total += 1 ))
+        fi
+    done < <(sort ${server_node_list} ${worker_node_list} | uniq)
 }
 
 function gen_script()
@@ -87,7 +96,13 @@ function gen_script()
         if [ "${line:0:1}" != "#" ]
         then
             local server_cmd=${server_script_head}
-            server_cmd+="echo \"python bm/grpc.py --job_name=ps --ps_hosts=${ps_list} --worker_hosts=${worker_list} \" >> ${run_path}/s.sh"
+            if [ ${enable_perf} -eq 1 ]
+            then
+                #server_cmd+="echo \"python bm/grpc.py --job_name=ps --ps_hosts=${ps_list} --worker_hosts=${worker_list} \" >> ${run_path}/s.sh"
+                server_cmd+="echo \"perf record -q -g -o server.perf python bm/grpc.py --job_name=ps --ps_hosts=${ps_list} --worker_hosts=${worker_list} \" >> ${run_path}/s.sh"
+            else
+                server_cmd+="echo \"python bm/grpc.py --job_name=ps --ps_hosts=${ps_list} --worker_hosts=${worker_list} \" >> ${run_path}/s.sh"
+            fi
             remote_cmd ${line} "${server_cmd}"
             (( index += 1 ))
         fi
@@ -100,7 +115,7 @@ function gen_script()
             local worker_cmd=${worker_script_head}
             if [ ${enable_perf} -eq 1 ]
             then
-                worker_cmd+="echo \"perf record -o worker.perf python bm/grpc.py --job_name=worker --ps_hosts=${ps_list} --worker_hosts=${worker_list} --dim2=${1} --num_steps=30 \" >> ${run_path}/w.sh"
+                worker_cmd+="echo \"perf record -q -g -o worker.perf python bm/grpc.py --job_name=worker --ps_hosts=${ps_list} --worker_hosts=${worker_list} --dim2=${1} --num_steps=30 \" >> ${run_path}/w.sh"
             else
                 worker_cmd+="echo \"python bm/grpc.py --job_name=worker --ps_hosts=${ps_list} --worker_hosts=${worker_list} --dim2=${1} --num_steps=30 \" >> ${run_path}/w.sh"
             fi
@@ -108,6 +123,8 @@ function gen_script()
             (( index += 1 ))
         fi
     done < ${worker_node_list}
+
+    echo Finish!
 }
 
 
