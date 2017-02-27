@@ -1,10 +1,10 @@
 #!/bin/bash
 
+### Setting
+enable_perf=1
+
 ### Constantis
 username="kit"
-password="19870817"
-
-enable_perf=1
 
 host_ip="192.168.1.120"
 server_node_list="s.txt"
@@ -51,12 +51,14 @@ function count_machine()
 function install_python()
 {
     rm -rf ${python_path}
+    echo copying from source
     scp -r -q -C ${username}@10.172.140.102:${python_path} ${python_path}
 
     while IFS= read -r line; do
-        if [ "${line:0:1}" != "#" ] && [ "${line}" != ${host_ip}  ] 
+        if [ "${line:0:1}" != "#" ] && [ "${line}" != ${host_ip} ] 
         then
-            echo ${line}
+            echo copying to ${line}
+            scp -r -q -C ${python_path} ${username}@${line}:${python_path}
             (( total += 1 ))
         fi
     done < <(sort ${server_node_list} ${worker_node_list} | uniq)
@@ -95,6 +97,7 @@ function gen_script()
     while IFS= read -r line; do
         if [ "${line:0:1}" != "#" ]
         then
+            echo "Generating server script to " ${line}
             local server_cmd=${server_script_head}
             if [ ${enable_perf} -eq 1 ]
             then
@@ -112,6 +115,7 @@ function gen_script()
     while IFS= read -r line; do
         if [ "${line:0:1}" != "#" ]
         then
+            echo "Generating server script to " ${line}
             local worker_cmd=${worker_script_head}
             if [ ${enable_perf} -eq 1 ]
             then
@@ -123,8 +127,6 @@ function gen_script()
             (( index += 1 ))
         fi
     done < ${worker_node_list}
-
-    echo Finish!
 }
 
 
@@ -201,7 +203,7 @@ setup ()
 
 function auth()
 {
-    if [ ! -f "~/.ssh/id_rsa.pub" ]; then
+    if [ ! -f "/home/${username}/.ssh/id_rsa.pub" ]; then
         ssh-keygen -t rsa
     fi
 
@@ -210,9 +212,9 @@ function auth()
         if [ "${line:0:1}" != "#" ]
         then
             echo "copying authority to ${line}"
-            ssh-copy-id -i ~/.ssh/id_rsa.pub "${line}"
+            ssh-copy-id -i /home/${username}/.ssh/id_rsa.pub "${line}"
         fi
-    done < ${machine_list}
+    done < <(sort ${server_node_list} ${worker_node_list} | uniq)
 }
 
 
@@ -225,18 +227,8 @@ function copy_script()
             remote_cmd ${line} "mkdir -p ${run_path}"
             scp -r -q -C ${script_path}/* ${username}@${line}:${run_path}
         fi
-    done < ${server_node_list}
-
-    while IFS= read -r line; do
-        if [ "${line:0:1}" != "#" ]
-        then
-            echo "copying scripts to ${line}"
-            remote_cmd ${line} "mkdir -p ${run_path}"
-            scp -r -q -C ${script_path}/* ${username}@${line}:${run_path}
-        fi
-    done < ${worker_node_list}
+    done < <(sort ${server_node_list} ${worker_node_list} | uniq)
 }
-
 
 function startall()
 {
