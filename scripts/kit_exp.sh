@@ -59,12 +59,31 @@ function install_python()
     while IFS= read -r line; do
         if [ "${line:0:1}" != "#" ] && [ "${line}" != ${host_ip} ] 
         then
-            echo copying to ${line}
+            echo copying python to ${line}
             scp -r -q -C ${python_path} ${username}@${line}:${python_path}
-            (( total += 1 ))
         fi
     done < <(sort ${server_node_list} ${worker_node_list} | uniq)
 }
+
+
+function copy_tensorflow()
+{
+    local lib_path="${python_path}/lib/python2.7/site-packages/"
+    rm -rf ${lib_path}/tensor*
+
+    echo copying from source
+    scp -r -q -C ${username}@10.172.140.102:${lib_path}/tensor* ${lib_path}/
+
+    while IFS= read -r line; do
+        if [ "${line:0:1}" != "#" ] && [ "${line}" != ${host_ip} ] 
+        then
+            echo copying python to ${line}
+            remote_cmd ${line} "rm -rf ${lib_path}/tensor*"
+            scp -r -q -C ${lib_path}/tensor* ${username}@${line}:${lib_path}
+        fi
+    done < <(sort ${server_node_list} ${worker_node_list} | uniq)
+}
+
 
 
 function gen_script()
@@ -117,7 +136,7 @@ function gen_script()
     while IFS= read -r line; do
         if [ "${line:0:1}" != "#" ]
         then
-            echo "Generating server script to " ${line}
+            echo "Generating worker script to " ${line}
             local worker_cmd=${worker_script_head}
             if [ ${enable_perf} -eq 1 ]
             then
@@ -159,6 +178,7 @@ function start_worker()
                 remote_bg_cmd ${line} "${run_path}/w.sh &"
             else
                 remote_cmd ${line} "${run_path}/w.sh"
+                #echo abc
             fi
         fi
     done < ${worker_node_list}
@@ -197,9 +217,11 @@ function kill_process()
 }
 
 
-setup () 
+function setup () 
 {
-    install_python
+    kill_process
+#    install_python
+    copy_tensorflow
 }
 
 
@@ -240,7 +262,7 @@ function startall()
 }
 
 
-usage ()
+function usage ()
 {
     echo "Call Usage"
 }
