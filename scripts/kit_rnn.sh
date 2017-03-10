@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ### Setting
-enable_perf=1
+enable_perf=0
 
 ### Constantis
 username="kit"
@@ -124,7 +124,7 @@ function gen_script()
             then
                 server_cmd+="echo \"perf record -q -g -o server.perf python cnn/multi_node_async_benchmark.py --ps_hosts=${ps_list} --worker_hosts=${worker_list} --job_name=ps --task_index=${index} \" >> ${run_path}/s.sh"
             else
-                server_cmd+="echo \"python cnn/multi_node_async_benchmark.py --ps_hosts=${ps_list} --worker_hosts=${worker_list} --job_name=ps --task_index=${index} \" >> ${run_path}/s.sh"
+                server_cmd+="echo \"python rnn/lstm_kit.py --ps_hosts=${ps_list} --worker_hosts=${worker_list} --job_name=ps --task_index=${index} \" >> ${run_path}/s.sh"
             fi
             remote_cmd ${line} "${server_cmd}"
             (( index += 1 ))
@@ -141,7 +141,7 @@ function gen_script()
             then
                 worker_cmd+="echo \"perf record -q -g -o worker.perf python cnn/multi_node_async_benchmark.py --ps_hosts=${ps_list} --worker_hosts=${worker_list} --job_name=worker --task_index=${index} $*\" >> ${run_path}/w.sh"
             else
-                worker_cmd+="echo \"python cnn/multi_node_async_benchmark.py --ps_hosts=${ps_list} --worker_hosts=${worker_list} --job_name=worker --task_index=${index} $*\" >> ${run_path}/w.sh"
+                worker_cmd+="echo \"python rnn/lstm_kit.py --ps_hosts=${ps_list} --worker_hosts=${worker_list} --job_name=worker --task_index=${index} $*\" >> ${run_path}/w.sh"
             fi
             remote_cmd ${line} "${worker_cmd}"
             (( index += 1 ))
@@ -204,6 +204,7 @@ function kill_process()
     while IFS= read -r line; do
         if [ "${line:0:1}" != "#" ]
         then
+            echo "Killing process " ${line}
             remote_cmd ${line} "pkill -9 -u ${username} -f ${process_name}"
         fi
     done < ${server_node_list}
