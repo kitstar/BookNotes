@@ -41,3 +41,9 @@ def build_model(FLAGS):
     train_op = tf.train.AdagradOptimizer(0.01).minimize(loss, global_step=global_step)
 
     return (inputs, targets, train_op)
+
+
+def get_data(FLAGS):
+    inputs_data = np.random.rand(FLAGS.num_steps, FLAGS.batch_size, FLAGS.hidden_size)
+    targets_data = np.random.rand(FLAGS.num_steps, FLAGS.batch_size)
+    return (inputs_data, targets_data)
