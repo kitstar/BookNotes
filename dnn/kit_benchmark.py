@@ -32,12 +32,17 @@ def main(_):
             
             if FLAGS.network == 'lstm':
                 from models.lstm import build_model
+                inputs_data = np.random.rand(FLAGS.num_steps, FLAGS.batch_size, FLAGS.hidden_size)
+                targets_data = np.random.rand(FLAGS.num_steps, FLAGS.batch_size) 
+            elif FLAGS.network == 'fc':
+                from models.fullyconnect import build_model, get_data
             elif FLAGS.network == 'resnet':
                 print("nothing")
             else:
                 sys.exit("Invalid network [%s]" % args.arch)
       
         inputs, targets, train_op = build_model(FLAGS)
+        inputs_data, targets_data = get_data(FLAGS)
 
         # The StopAtStepHook handles stopping after running given steps.
         hooks=[tf.train.StopAtStepHook(num_steps=FLAGS.epoch)]
@@ -46,9 +51,13 @@ def main(_):
         # restoring from a checkpoint, saving to a checkpoint, and closing when done
         # or an error occurs.
         print_model()
-        inputs_data = np.random.rand(FLAGS.num_steps, FLAGS.batch_size, FLAGS.hidden_size)
-        targets_data = np.random.rand(FLAGS.num_steps, FLAGS.batch_size)
 
+        if FLAGS.network == 'lstm':
+            inputs_data = np.random.rand(FLAGS.num_steps, FLAGS.batch_size, FLAGS.hidden_size)
+            targets_data = np.random.rand(FLAGS.num_steps, FLAGS.batch_size)
+        elif FLAGS.network == 'resnet':
+            print("nothing")
+        
         current_step = 0;
         with tf.train.MonitoredTrainingSession(master=server.target,
                                                is_chief=(FLAGS.task_index == 0),
@@ -133,33 +142,49 @@ if __name__ == "__main__":
       help="Batch Size"
   )
 
+
   parser.add_argument(
       "--num_steps", "-n",
       type=int,
       default=10,
-      help="number of step"
+      help="number of step for rnn"
   )
 
   parser.add_argument(
       "--hidden_size",
       type=int,
       default=200,
-      help="Hidden Cell Size"
+      help="Hidden Cell Size for rnn and cnn"
   )
 
   parser.add_argument(
       "--vocab_size", "-v",
       type=int,
       default=1000,
-      help="Vocabulary Size"
+      help="Vocabulary Size for run"
   )
 
   parser.add_argument(
       "--num_layers", "-l",
       type=int,
       default=3,
-      help="Layers number"
+      help="Layers number for rnn and cnn"
   )
+
+  parser.add_argument(
+      "--num_classes", "-c",
+      type=int,
+      default=10,
+      help="Class number for cnn."
+  )
+
+  parser.add_argument(
+      "--num_features", "-f",
+      type=int,
+      default=784,
+      help="Input features for cnn."
+  )
+
   
   FLAGS, unparsed = parser.parse_known_args()
   print("FLAGS = ", FLAGS)
