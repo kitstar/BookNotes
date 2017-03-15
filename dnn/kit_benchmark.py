@@ -36,6 +36,8 @@ def main(_):
                 from models.fullyconnect import build_model, get_data
             elif FLAGS.network == 'alexnet':
                 from models.alexnet import build_model, get_data
+            elif FLAGS.network == 'vgg19' or FLAGS.network == 'vgg_e':
+                from models.vgg19 import build_model, get_data
             elif FLAGS.network == 'resnet':
                 print("nothing")
             else:
@@ -51,13 +53,7 @@ def main(_):
         # restoring from a checkpoint, saving to a checkpoint, and closing when done
         # or an error occurs.
         print_model()
-
-        if FLAGS.network == 'lstm':
-            inputs_data = np.random.rand(FLAGS.num_steps, FLAGS.batch_size, FLAGS.hidden_size)
-            targets_data = np.random.rand(FLAGS.num_steps, FLAGS.batch_size)
-        elif FLAGS.network == 'resnet':
-            print("nothing")
-        
+               
         current_step = 0;
         with tf.train.MonitoredTrainingSession(master=server.target,
                                                is_chief=(FLAGS.task_index == 0),
@@ -117,7 +113,7 @@ if __name__ == "__main__":
       "--network", "-g",
       type=str,
       default="lstm",
-      help="lstm"
+      help="lstm/fc/alexnet/vgg19"
   )
 
   parser.add_argument(
@@ -188,4 +184,6 @@ if __name__ == "__main__":
   
   FLAGS, unparsed = parser.parse_known_args()
   print("FLAGS = ", FLAGS)
+
+  tf.logging.set_verbosity(tf.logging.INFO)
   tf.app.run(main=main, argv=[sys.argv[0]] + unparsed)
