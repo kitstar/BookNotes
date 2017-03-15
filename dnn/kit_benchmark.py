@@ -38,10 +38,12 @@ def main(_):
                 from models.alexnet import build_model, get_data
             elif FLAGS.network == 'vgg19' or FLAGS.network == 'vgg_e':
                 from models.vgg19 import build_model, get_data
+            elif FLAGS.network == 'inception_v3' :
+                from models.inception_v3 import build_model, get_data
             elif FLAGS.network == 'resnet':
                 print("nothing")
             else:
-                sys.exit("Invalid network [%s]" % args.arch)
+                sys.exit("Invalid network [%s]" % args.network)
       
             inputs, targets, train_op = build_model(FLAGS)     
             inputs_data, targets_data = get_data(FLAGS)
