@@ -31,18 +31,18 @@ def main(_):
             cluster=cluster)):
             
             if FLAGS.network == 'lstm':
-                from models.lstm import build_model
-                inputs_data = np.random.rand(FLAGS.num_steps, FLAGS.batch_size, FLAGS.hidden_size)
-                targets_data = np.random.rand(FLAGS.num_steps, FLAGS.batch_size) 
+                from models.lstm import build_model, get_data
             elif FLAGS.network == 'fc':
                 from models.fullyconnect import build_model, get_data
+            elif FLAGS.network == 'alexnet':
+                from models.alexnet import build_model, get_data
             elif FLAGS.network == 'resnet':
                 print("nothing")
             else:
                 sys.exit("Invalid network [%s]" % args.arch)
       
-        inputs, targets, train_op = build_model(FLAGS)
-        inputs_data, targets_data = get_data(FLAGS)
+            inputs, targets, train_op = build_model(FLAGS)     
+            inputs_data, targets_data = get_data(FLAGS)
 
         # The StopAtStepHook handles stopping after running given steps.
         hooks=[tf.train.StopAtStepHook(num_steps=FLAGS.epoch)]

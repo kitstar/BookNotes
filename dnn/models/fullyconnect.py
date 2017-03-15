@@ -9,12 +9,6 @@ from utils import real_type
 
 
 
-def sigmoidDNNLayer(layerIdx, input, inputDim, outputDim, real_type = tf.float32):
-    W = tf.get_variable("W" + str(layerIdx), [inputDim, outputDim], dtype = real_type)
-    B = tf.get_variable("B" + str(layerIdx), [outputDim], dtype = real_type)
-    return tf.nn.sigmoid(tf.nn.xw_plus_b(input, W, B))
-
-
 def build_model(FLAGS):
     inputs = tf.placeholder(real_type(FLAGS), [FLAGS.batch_size, FLAGS.num_features])
     targets = tf.placeholder(tf.int32, [FLAGS.batch_size])
