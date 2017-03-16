@@ -40,6 +40,8 @@ def main(_):
                 from models.vgg19 import build_model, get_data
             elif FLAGS.network == 'inception_v3' :
                 from models.inception_v3 import build_model, get_data
+            elif FLAGS.network == 'seq2seq' :
+                from models.seq2seq import build_model, get_data
             elif FLAGS.network == 'resnet':
                 print("nothing")
             else:
@@ -49,7 +51,7 @@ def main(_):
             inputs_data, targets_data = get_data(FLAGS)
 
         # The StopAtStepHook handles stopping after running given steps.
-        hooks=[tf.train.StopAtStepHook(num_steps=FLAGS.epoch)]
+        #hooks=[tf.train.StopAtStepHook(num_steps=FLAGS.epoch)]
 
         # The MonitoredTrainingSession takes care of session initialization,
         # restoring from a checkpoint, saving to a checkpoint, and closing when done
@@ -60,10 +62,9 @@ def main(_):
         with tf.train.MonitoredTrainingSession(master=server.target,
                                                is_chief=(FLAGS.task_index == 0),
                                                #checkpoint_dir="/tmp/train_logs",
-                                               save_checkpoint_secs=0,
-                                               hooks=hooks) as mon_sess:
+                                               save_checkpoint_secs=0) as mon_sess:
       
-            while not mon_sess.should_stop():
+            while not mon_sess.should_stop() and current_step < FLAGS.epoch:
                 current_step += 1
                 print("Start step %d" % current_step)
                 mon_sess.run(train_op, feed_dict={inputs:inputs_data, targets:targets_data})
