@@ -20,7 +20,7 @@ process_name='python'
 server_script_head+="echo '#!/bin/bash' > ${run_path}/s.sh; chmod +x ${run_path}/s.sh; echo cd ${run_path} >> ${run_path}/s.sh;"
 worker_script_head+="echo '#!/bin/bash' > ${run_path}/w.sh; chmod +x ${run_path}/w.sh; echo cd ${run_path} >> ${run_path}/w.sh;"
 
-network="inception_v3"
+network="alexnet"
 
 
 ### Utils
@@ -123,9 +123,9 @@ function gen_script()
             local server_cmd=${server_script_head}
             if [ ${enable_perf} -eq 1 ]
             then
-                server_cmd+="echo \"perf record -q -g -o server.perf python kit_benchmark.py --ps_hosts=${ps_list} --worker_hosts=${worker_list} --job_name=ps --task_index=${index} \" >> ${run_path}/s.sh"
+                server_cmd+="echo \"perf record -q -g -o server.perf python -u kit_benchmark.py --ps_hosts=${ps_list} --worker_hosts=${worker_list} --job_name=ps --task_index=${index} \" >> ${run_path}/s.sh"
             else
-                server_cmd+="echo \"python kit_benchmark.py --ps_hosts=${ps_list} --worker_hosts=${worker_list} --job_name=ps --task_index=${index} \" >> ${run_path}/s.sh"
+                server_cmd+="echo \"python -u kit_benchmark.py --ps_hosts=${ps_list} --worker_hosts=${worker_list} --job_name=ps --task_index=${index} \" >> ${run_path}/s.sh"
             fi
             remote_cmd ${line} "${server_cmd}"
             (( index += 1 ))
@@ -140,9 +140,9 @@ function gen_script()
             local worker_cmd=${worker_script_head}
             if [ ${enable_perf} -eq 1 ]
             then
-                worker_cmd+="echo \"perf record -q -g -o worker.perf python kit_benchmark.py --ps_hosts=${ps_list} --worker_hosts=${worker_list} --job_name=worker --task_index=${index} $*\" >> ${run_path}/w.sh"
+                worker_cmd+="echo \"perf record -q -g -o worker.perf python -u kit_benchmark.py --ps_hosts=${ps_list} --worker_hosts=${worker_list} --job_name=worker --task_index=${index} $*\" >> ${run_path}/w.sh"
             else
-                worker_cmd+="echo \"python kit_benchmark.py --network=${network} --ps_hosts=${ps_list} --worker_hosts=${worker_list} --job_name=worker --task_index=${index} $*\" >> ${run_path}/w.sh"
+                worker_cmd+="echo \"python -u kit_benchmark.py --network=${network} --ps_hosts=${ps_list} --worker_hosts=${worker_list} --job_name=worker --task_index=${index} $*\" >> ${run_path}/w.sh"
             fi
             remote_cmd ${line} "${worker_cmd}"
             (( index += 1 ))
