@@ -3,6 +3,7 @@ import sys
 
 import numpy as np
 import tensorflow as tf
+import time
 from utils import print_model, real_type
 
 FLAGS = None
@@ -24,16 +25,16 @@ def main(_):
     if FLAGS.job_name == "ps":
         server.join()
     elif FLAGS.job_name == "worker":
-        # Assigns ops to the local worker by default.
         local_worker_device = "/job:worker/task:%d" % FLAGS.task_index
         with tf.device(tf.train.replica_device_setter(
             worker_device=local_worker_device,
             cluster=cluster)):
             
+            this_model = None
             if FLAGS.network == 'lstm':
                 from models.lstm import build_model, get_data
             elif FLAGS.network == 'fc':
-                from models.fullyconnect import build_model, get_data
+                from models.fullyconnect import KitModel
             elif FLAGS.network == 'alexnet':
                 from models.alexnet import build_model, get_data
             elif FLAGS.network == 'vgg19' or FLAGS.network == 'vgg_e':
@@ -47,29 +48,47 @@ def main(_):
             else:
                 sys.exit("Invalid network [%s]" % args.network)
       
-            inputs, targets, train_op = build_model(FLAGS)     
-            inputs_data, targets_data = get_data(FLAGS)
+            this_model = KitModel(FLAGS)
+            this_model.build_model()
 
-        # The StopAtStepHook handles stopping after running given steps.
-        #hooks=[tf.train.StopAtStepHook(num_steps=FLAGS.epoch)]
-
-        # The MonitoredTrainingSession takes care of session initialization,
-        # restoring from a checkpoint, saving to a checkpoint, and closing when done
-        # or an error occurs.
         print_model()
-               
-        current_step = 0;
-        with tf.train.MonitoredTrainingSession(master=server.target,
-                                               is_chief=(FLAGS.task_index == 0),
-                                               #checkpoint_dir="/tmp/train_logs",
-                                               save_checkpoint_secs=0) as mon_sess:
-      
-            while not mon_sess.should_stop() and current_step < FLAGS.epoch:
-                current_step += 1
-                print("Start step %d" % current_step)
-                mon_sess.run(train_op, feed_dict={inputs:inputs_data, targets:targets_data})
-                print("Finish step %d" % current_step)
 
+        sess_config = tf.ConfigProto(
+            allow_soft_placement=True, 
+            log_device_placement=False,
+            graph_options = tf.GraphOptions(
+                optimizer_options=tf.OptimizerOptions(opt_level=tf.OptimizerOptions.L1)))
+        if FLAGS.infer_shape == True:
+            sess_config.set_infer_shape(FLAGS.infer_shape)
+ 
+        sv = tf.train.Supervisor(
+            is_chief = (FLAGS.task_index == 0),
+            init_op = tf.global_variables_initializer(),
+            local_init_op = tf.local_variables_initializer(),
+            global_step = this_model.global_step,
+            save_model_secs = 0,
+            save_summaries_secs = 0)
+               
+        sess = sv.prepare_or_wait_for_session(server.target, config=sess_config)
+
+        current_step = 0
+        while current_step < FLAGS.epoch + FLAGS.warmup:
+            current_step += 1
+            this_model.get_data()
+            print("Start step %d" % current_step)
+            if (current_step > FLAGS.warmup):
+                start_time = time.time()
+
+            _, step_loss = sess.run([this_model.train_op, this_model.cost], feed_dict = this_model.get_feed_dict())
+                        
+            end_time = time.time()
+            
+            if (current_step > FLAGS.warmup):
+                print("Finish step %d, loss = %f, speed = %f sampes/s" % (current_step, step_loss, FLAGS.batch_size / (end_time - start_time)))
+            else:            
+                print("Finish step %d, loss = %f" % (current_step, step_loss))
+
+        duration = time.time() - start_time
         #writer.close()
 
     else:
@@ -113,10 +132,17 @@ if __name__ == "__main__":
 
   # Flags for algorithm
   parser.add_argument(
+      "--infer_shape",
+      type=bool,
+      default=False,
+      help="if use rdma"
+  )
+
+  parser.add_argument(
       "--network", "-g",
       type=str,
       default="lstm",
-      help="lstm/fc/alexnet/vgg19"
+      help="lstm/fc/alexnet/vgg19/inception_v3"
   )
 
   parser.add_argument(
@@ -130,7 +156,14 @@ if __name__ == "__main__":
       "--epoch", "-e",
       type=int,
       default=3,
-      help="Epoch Size"
+      help="number of epoch"
+  )
+
+  parser.add_argument(
+      "--warmup", "-w",
+      type=int,
+      default=0,
+      help="Warm up epoch"
   )
 
 
