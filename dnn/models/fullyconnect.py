@@ -33,7 +33,9 @@ class KitModel:
                 loss = tf.nn.sparse_softmax_cross_entropy_with_logits(net, self.targets)
                 self.cost = tf.reduce_sum(loss)
                 self.global_step = tf.contrib.framework.get_or_create_global_step()
-                self.train_op = tf.train.AdagradOptimizer(0.01).minimize(loss, global_step=self.global_step)
+                self.train_op = tf.train.AdagradOptimizer(0.01).minimize(
+                    loss, 
+                    global_step = self.global_step)
 
 
     def get_data(self):

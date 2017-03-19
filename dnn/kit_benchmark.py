@@ -4,6 +4,7 @@ import sys
 import numpy as np
 import tensorflow as tf
 import time
+import tempfile
 from utils import print_model, real_type
 
 FLAGS = None
@@ -30,7 +31,6 @@ def main(_):
             worker_device=local_worker_device,
             cluster=cluster)):
             
-            this_model = None
             if FLAGS.network == 'lstm':
                 from models.lstm import build_model, get_data
             elif FLAGS.network == 'fc':
@@ -38,9 +38,9 @@ def main(_):
             elif FLAGS.network == 'alexnet':
                 from models.alexnet import build_model, get_data
             elif FLAGS.network == 'vgg19' or FLAGS.network == 'vgg_e':
-                from models.vgg19 import build_model, get_data
+                from models.vgg19 import KitModel
             elif FLAGS.network == 'inception_v3' :
-                from models.inception_v3 import build_model, get_data
+                from models.inception_v3 import KitModel
             elif FLAGS.network == 'seq2seq' :
                 from models.seq2seq import build_model, get_data
             elif FLAGS.network == 'resnet':
@@ -51,44 +51,51 @@ def main(_):
             this_model = KitModel(FLAGS)
             this_model.build_model()
 
-        print_model()
+        train_dir = tempfile.mkdtemp()
 
         sess_config = tf.ConfigProto(
             allow_soft_placement=True, 
             log_device_placement=False,
-            graph_options = tf.GraphOptions(
-                optimizer_options=tf.OptimizerOptions(opt_level=tf.OptimizerOptions.L1)))
+            device_filters=["/job:ps", "/job:worker/task:%d" % FLAGS.task_index])
+
         if FLAGS.infer_shape == True:
             sess_config.set_infer_shape(FLAGS.infer_shape)
- 
+         
         sv = tf.train.Supervisor(
             is_chief = (FLAGS.task_index == 0),
+            logdir = train_dir,
             init_op = tf.global_variables_initializer(),
-            local_init_op = tf.local_variables_initializer(),
             global_step = this_model.global_step,
-            save_model_secs = 0,
-            save_summaries_secs = 0)
+            summary_writer = None,
+            saver = None)
+
+        if FLAGS.task_index == 0:
+            print("Worker %d: Initializing session..." % FLAGS.task_index)
+        else:
+            print("Worker %d: Waiting for session to be initialized..." % FLAGS.task_index)
                
-        sess = sv.prepare_or_wait_for_session(server.target, config=sess_config)
+        sess = sv.prepare_or_wait_for_session(server.target, config = sess_config, start_standard_services = True)
+
+        print_model()
+
+        print ("Start warmup %d epoch." % FLAGS.warmup)
+        for _ in range(FLAGS.warmup):
+            this_model.get_data() 
+            sess.run(this_model.train_op, feed_dict = this_model.get_feed_dict())
 
         current_step = 0
-        while current_step < FLAGS.epoch + FLAGS.warmup:
+        duration = 0
+        while current_step < FLAGS.epoch:
             current_step += 1
-            this_model.get_data()
+            this_model.get_data() 
             print("Start step %d" % current_step)
-            if (current_step > FLAGS.warmup):
-                start_time = time.time()
-
+            start_time = time.time()
             _, step_loss = sess.run([this_model.train_op, this_model.cost], feed_dict = this_model.get_feed_dict())
-                        
             end_time = time.time()
-            
-            if (current_step > FLAGS.warmup):
-                print("Finish step %d, loss = %f, speed = %f sampes/s" % (current_step, step_loss, FLAGS.batch_size / (end_time - start_time)))
-            else:            
-                print("Finish step %d, loss = %f" % (current_step, step_loss))
+            print("Finish step %d, loss = %f, speed = %f sampes/s" % (current_step, step_loss, FLAGS.batch_size / (end_time - start_time)))
+            duration += end_time - start_time
 
-        duration = time.time() - start_time
+        print ("Total Time = %f s." % duration)
         #writer.close()
 
     else:

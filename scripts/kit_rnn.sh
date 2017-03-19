@@ -142,7 +142,7 @@ function gen_script()
             then
                 worker_cmd+="echo \"perf record -q -g -o worker.perf python -u kit_benchmark.py --ps_hosts=${ps_list} --worker_hosts=${worker_list} --job_name=worker --task_index=${index} $*\" >> ${run_path}/w.sh"
             else
-                worker_cmd+="echo \"python -u kit_benchmark.py --network=${network} --ps_hosts=${ps_list} --worker_hosts=${worker_list} --job_name=worker --task_index=${index} $*\" >> ${run_path}/w.sh"
+                worker_cmd+="echo \"python -u kit_benchmark.py --network=${network} --ps_hosts=${ps_list} --worker_hosts=${worker_list} --job_name=worker --task_index=${index} $* 2>&1 | tee w.result.txt  \" >> ${run_path}/w.sh"
             fi
             remote_cmd ${line} "${worker_cmd}"
             (( index += 1 ))
@@ -159,8 +159,7 @@ function start_server()
             echo "Start server process ${line}"
             remote_bg_cmd ${line} "${run_path}/s.sh &"
         fi
-    done < ${server_node_list}
-    
+    done < ${server_node_list}    
 }
 
 
@@ -203,19 +202,55 @@ function perf_worker()
 function kill_process()
 {
     while IFS= read -r line; do
-        if [ "${line:0:1}" != "#" ]
+        if [ "${line:0:1}" != "#" ] 
         then
-            echo "Killing process " ${line}
+            echo "Killing process" ${line}
             remote_cmd ${line} "pkill -9 -u ${username} -f ${process_name}"
+            remote_cmd ${line} "rm -f ${run_path}/*.result.txt"
         fi
-    done < ${server_node_list}
+    done < <(sort ${server_node_list} ${worker_node_list} | uniq)
+}
 
+
+function print_process()
+{
+    while IFS= read -r line; do
+        if [ "${line:0:1}" != "#" ] 
+        then
+            echo "Print process" ${line}
+            remote_cmd ${line} "ps aux | grep ${process_name}"
+            echo ""
+        fi
+    done < <(sort ${server_node_list} ${worker_node_list} | uniq)
+}
+
+
+function get_log()
+{
+    local idx=${1}
+    
     while IFS= read -r line; do
         if [ "${line:0:1}" != "#" ]
         then
-            remote_cmd ${line} "pkill -9 -u ${username} -f ${process_name}"
+            if [ ${idx} -eq 0 ]
+            then
+                remote_cmd ${line} "cat s.result.txt"
+            fi
+            (( idx -= 1))
         fi
-    done < ${worker_node_list}
+    done < ${server_node_list}
+
+     while IFS= read -r line; do
+        if [ "${line:0:1}" != "#" ]
+        then
+            if [ ${idx} -eq 0 ]
+            then
+                echo "Print log from" ${line}
+                remote_cmd ${line} "cat ${run_path}/w.result.txt"
+            fi
+            (( idx -= 1))
+        fi
+    done < ${worker_node_list} 
 }
 
 
@@ -295,7 +330,7 @@ case "${1}" in
     "startserver" | "ss") start_server
     ;;
 
-    "perfserver" | "ps") perf_server
+    "perfserver") perf_server
     ;;
 
     "startworker" | "sw") start_worker
@@ -305,6 +340,12 @@ case "${1}" in
     ;;
 
     "kill" | "k") kill_process
+    ;;
+
+    "ps") print_process
+    ;;
+
+    "log") get_log ${2}
     ;;
 
     "help" | "h" | "") usage
