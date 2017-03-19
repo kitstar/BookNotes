@@ -36,7 +36,7 @@ def main(_):
             elif FLAGS.network == 'fc':
                 from models.fullyconnect import KitModel
             elif FLAGS.network == 'alexnet':
-                from models.alexnet import build_model, get_data
+                from models.alexnet import KitModel
             elif FLAGS.network == 'vgg19' or FLAGS.network == 'vgg_e':
                 from models.vgg19 import KitModel
             elif FLAGS.network == 'inception_v3' :
