@@ -12,6 +12,7 @@ worker_node_list="machine_list.txt"
 script_path="/home/${username}/exp/script/dnn"
 run_path="/home/${username}/run/dnn"
 python_path="/home/${username}/anaconda2"
+data_path="/home/${username}/exp/data"
 
 ps_port=8700
 worker_port=8800
@@ -125,7 +126,7 @@ function gen_script()
             then
                 server_cmd+="echo \"perf record -q -g -o server.perf python -u kit_benchmark.py --ps_hosts=${ps_list} --worker_hosts=${worker_list} --job_name=ps --task_index=${index} \" >> ${run_path}/s.sh"
             else
-                server_cmd+="echo \"python -u kit_benchmark.py --ps_hosts=${ps_list} --worker_hosts=${worker_list} --job_name=ps --task_index=${index} \" >> ${run_path}/s.sh"
+                server_cmd+="echo \"python -u kit_benchmark.py --ps_hosts=${ps_list} --worker_hosts=${worker_list} --job_name=ps --task_index=${index} 2>&1 | tee s.result.txt \" >> ${run_path}/s.sh"
             fi
             remote_cmd ${line} "${server_cmd}"
             (( index += 1 ))
@@ -234,13 +235,13 @@ function get_log()
         then
             if [ ${idx} -eq 0 ]
             then
-                remote_cmd ${line} "cat s.result.txt"
+                remote_cmd ${line} "cat ${run_path}/s.result.txt"
             fi
             (( idx -= 1))
         fi
     done < ${server_node_list}
 
-     while IFS= read -r line; do
+    while IFS= read -r line; do
         if [ "${line:0:1}" != "#" ]
         then
             if [ ${idx} -eq 0 ]
@@ -291,6 +292,19 @@ function copy_script()
 }
 
 
+function copy_data()
+{
+    while IFS= read -r line; do
+        if [ "${line:0:1}" != "#" ]
+        then
+            echo "copying data to ${line}"
+            remote_cmd ${line} "mkdir -p ${run_path}/data"
+            scp -r -C ${data_path}/* ${username}@${line}:${run_path}/data
+       fi
+    done < ${worker_node_list} 
+}
+
+
 function startall()
 {
     kill_process
@@ -322,6 +336,9 @@ case "${1}" in
     ;;
 
     "copyscript" | "cs") copy_script
+    ;;
+
+    "copydata" | "cd") copy_data
     ;;
 
     "startall" | "sa") startall
