@@ -42,7 +42,10 @@ def main(_):
             elif FLAGS.network == 'inception_v3' :
                 from models.inception_v3 import KitModel
             elif FLAGS.network == 'seq2seq' :
-                from models.seq2seq import build_model, get_data
+                import models.translate.translate 
+                from models.translate.translate import dist_train
+                dist_train(FLAGS, server, cluster)
+                sys.exit()
             elif FLAGS.network == 'resnet':
                 print("nothing")
             else:
@@ -153,6 +156,13 @@ if __name__ == "__main__":
   )
 
   parser.add_argument(
+      "--data_dir",
+      type=str,
+      default="./data",
+      help="Training data path"
+  )
+
+  parser.add_argument(
       "--use_fp16",
       type=bool,
       default=False,
@@ -224,7 +234,22 @@ if __name__ == "__main__":
       help="Input features for cnn."
   )
 
-  
+### for seq2seq
+  parser.add_argument("--learning_rate", type=float, default = 0.5, help = "Learning rate.")
+  parser.add_argument("--learning_rate_decay_factor", type=float, default = 0.99, help = "Learning rate decays by this much.")
+  parser.add_argument("--max_gradient_norm", type=float, default = 5.0, help = "Clip gradients to this norm.")
+  parser.add_argument("--size", type=int, default = 1024, help = "Size of each model layer.")
+  parser.add_argument("--from_vocab_size", type=int, default = 40000, help = "English vocabulary size.")
+  parser.add_argument("--to_vocab_size", type=int, default = 40000, help = "French vocabulary size.")
+  parser.add_argument("--train_dir", type=str, default = "/tmp", help = "Training directory.")
+  parser.add_argument("--from_train_data", type=str, default = None,  help = "Training data.")
+  parser.add_argument("--to_train_data", type=str, default = None, help = "Training data.")
+  parser.add_argument("--from_dev_data", type=str, default = None, help = "Training data.")
+  parser.add_argument("--to_dev_data", type=str, default = None, help = "Training data.")
+  parser.add_argument("--max_train_data_size", type = int, default = 0, help = "Limit on the size of training data (0: no limit).")
+  parser.add_argument("--steps_per_checkpoint", type = int, default = 2000, help = "How many training steps to do per checkpoint.")
+  parser.add_argument("--decode", type = bool, default = False, help = "Set to True for interactive decoding.")
+
   FLAGS, unparsed = parser.parse_known_args()
   print("FLAGS = ", FLAGS)
 
