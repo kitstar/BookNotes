@@ -30,7 +30,7 @@ class KitModel:
                 net = slim.fully_connected(self.inputs, self.FLAGS.hidden_size, scope = 'input_layer')
                 net = slim.repeat(net, self.FLAGS.num_layers - 2, slim.fully_connected, self.FLAGS.hidden_size, scope = 'hidden_layer')
                 net = slim.fully_connected(net, self.FLAGS.num_classes, activation_fn = None, scope = 'output_layer')
-                loss = tf.nn.sparse_softmax_cross_entropy_with_logits(net, self.targets)
+                loss = tf.nn.sparse_softmax_cross_entropy_with_logits(logits = net, labels = self.targets)
                 self.cost = tf.reduce_sum(loss)
                 self.global_step = tf.contrib.framework.get_or_create_global_step()
                 self.train_op = tf.train.AdagradOptimizer(0.01).minimize(
