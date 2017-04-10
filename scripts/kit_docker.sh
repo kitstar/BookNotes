@@ -10,6 +10,7 @@ username="core"
 host_ip="10.190.172.160"
 server_node_list="docker_list.txt"
 worker_node_list="docker_list.txt"
+docker_image_name="kit"
 script_path="/home/${local_user}/exp/script/dnn"
 run_path="/home/${username}/run/dnn"
 docker_run_path="/root/run/dnn"
@@ -23,7 +24,7 @@ process_name='python'
 server_script_head+="echo '#!/bin/bash' > ${run_path}/s.sh; chmod +x ${run_path}/s.sh; echo export LD_LIBRARY_PATH=/var/drivers/nvidia/current/lib64:$LD_LIBRARY_PATH >> ${run_path}/s.sh; echo cd ${docker_run_path} >> ${run_path}/s.sh;"
 worker_script_head+="echo '#!/bin/bash' > ${run_path}/w.sh; chmod +x ${run_path}/w.sh; echo export LD_LIBRARY_PATH=/var/drivers/nvidia/current/lib64:$LD_LIBRARY_PATH >> ${run_path}/w.sh; echo cd ${docker_run_path} >> ${run_path}/w.sh;"
 
-network="vgg19"
+network="alexnet"
 
 
 ### Utils
@@ -39,7 +40,7 @@ function remote_docker_cmd()
 {    
     local ip=${1}
     shift
-    ssh -i ./id_rsa -n -l ${username} ${ip} docker exec -i --privileged  kit "$*"
+    ssh -i ./id_rsa -n -l ${username} ${ip} docker exec -i --privileged ${docker_image_name} "$*"
 }
 
 
@@ -55,7 +56,7 @@ function remote_bg_docker_cmd()
 {    
     local ip=${1}
     shift
-    ssh -i ./id_rsa -n -l ${username} ${ip} docker exec -d --privileged kit "$*"
+    ssh -i ./id_rsa -n -l ${username} ${ip} docker exec -d --privileged ${docker_image_name} "$*"
 }
 
 

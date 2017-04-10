@@ -71,10 +71,19 @@ def main(_):
         sess_config = tf.ConfigProto(
             allow_soft_placement=True, 
             log_device_placement=False,
-            device_filters=["/job:ps", "/job:worker/task:%d" % FLAGS.task_index])
+            device_filters=["/job:ps", "/job:worker/task:%d" % FLAGS.task_index],
 
-        if FLAGS.infer_shape == True:
-            sess_config.set_infer_shape(FLAGS.infer_shape)
+            graph_options=tf.GraphOptions(
+                optimizer_options=tf.OptimizerOptions(opt_level=tf.OptimizerOptions.L1)
+            ),
+
+            gpu_options=tf.GPUOptions(
+                visible_device_list=""
+            )
+        )
+
+        if FLAGS.infer_shapes == True:
+            sess_config.graph_options.infer_shapes = FLAGS.infer_shapes
          
         sv = tf.train.Supervisor(
             is_chief = (FLAGS.task_index == 0),
@@ -154,7 +163,7 @@ if __name__ == "__main__":
 
   # Flags for algorithm
   parser.add_argument(
-      "--infer_shape",
+      "--infer_shapes",
       type=bool,
       default=False,
       help="if use rdma"
