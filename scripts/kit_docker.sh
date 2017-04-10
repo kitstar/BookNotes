@@ -23,7 +23,7 @@ process_name='python'
 server_script_head+="echo '#!/bin/bash' > ${run_path}/s.sh; chmod +x ${run_path}/s.sh; echo export LD_LIBRARY_PATH=/var/drivers/nvidia/current/lib64:$LD_LIBRARY_PATH >> ${run_path}/s.sh; echo cd ${docker_run_path} >> ${run_path}/s.sh;"
 worker_script_head+="echo '#!/bin/bash' > ${run_path}/w.sh; chmod +x ${run_path}/w.sh; echo export LD_LIBRARY_PATH=/var/drivers/nvidia/current/lib64:$LD_LIBRARY_PATH >> ${run_path}/w.sh; echo cd ${docker_run_path} >> ${run_path}/w.sh;"
 
-network="alexnet"
+network="vgg19"
 
 
 ### Utils
@@ -355,7 +355,7 @@ function startall()
 {
     kill_process
     start_server
-    sleep 10s
+    sleep 3s
     start_worker
 }
 

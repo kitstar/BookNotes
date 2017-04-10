@@ -64,7 +64,7 @@ class KitModel:
                 net = slim.conv2d(net, self.FLAGS.num_classes, [1, 1], activation_fn=None, normalizer_fn=None, scope='fc8')
  
                 logits = tf.squeeze(net, [1, 2], name='fc8/squeezed')
-                loss = tf.nn.sparse_softmax_cross_entropy_with_logits(logits, self.targets)
+                loss = tf.nn.sparse_softmax_cross_entropy_with_logits(logits = logits, labels = self.targets)
                 self.cost = tf.reduce_sum(loss)
                 self.global_step = tf.contrib.framework.get_or_create_global_step()
                 self.train_op = tf.train.AdagradOptimizer(0.01).minimize(

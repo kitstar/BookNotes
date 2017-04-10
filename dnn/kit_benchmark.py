@@ -17,17 +17,29 @@ def main(_):
     # Create a cluster from the parameter server and worker hosts.
     cluster = tf.train.ClusterSpec({"ps": ps_hosts, "worker": worker_hosts})
 
-    # Create and start a server for the local task.
-    server = tf.train.Server(cluster,
-                             job_name=FLAGS.job_name,
-                             task_index=FLAGS.task_index)
-
 
     if FLAGS.job_name == "ps":
+        ps_config = tf.ConfigProto(
+                gpu_options=tf.GPUOptions(
+                    per_process_gpu_memory_fraction=0.00001                
+                ))
+
+        # Create and start a server for the local task.
+        server = tf.train.Server(cluster,
+                                 job_name=FLAGS.job_name,
+                                 task_index=FLAGS.task_index,
+                                 config = ps_config)
         server.join()
     elif FLAGS.job_name == "worker":
+
+        # Create and start a server for the local task.
+        server = tf.train.Server(cluster,
+                                 job_name=FLAGS.job_name,
+                                 task_index=FLAGS.task_index)
+
         local_worker_device = "/job:worker/task:%d" % FLAGS.task_index
         with tf.device(tf.train.replica_device_setter(
+            ps_device='/job:ps/cpu:0',
             worker_device=local_worker_device,
             cluster=cluster)):
             
