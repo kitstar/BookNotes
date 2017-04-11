@@ -26,6 +26,7 @@ def main(_):
 
         # Create and start a server for the local task.
         server = tf.train.Server(cluster,
+ #                                protocol = "grpc_rdma",
                                  job_name=FLAGS.job_name,
                                  task_index=FLAGS.task_index,
                                  config = ps_config)
@@ -34,6 +35,7 @@ def main(_):
 
         # Create and start a server for the local task.
         server = tf.train.Server(cluster,
+#                                 protocol = "grpc_rdma",
                                  job_name=FLAGS.job_name,
                                  task_index=FLAGS.task_index)
 
