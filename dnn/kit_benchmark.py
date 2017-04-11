@@ -55,13 +55,13 @@ def main(_):
                 from models.vgg19 import KitModel
             elif FLAGS.network == 'inception_v3' :
                 from models.inception_v3 import KitModel
+            elif FLAGS.network == 'resnet':                
+                from models.resnet import KitModel
             elif FLAGS.network == 'seq2seq' :
                 import models.translate.translate 
                 from models.translate.translate import dist_train
                 dist_train(FLAGS, server, cluster)
                 sys.exit()
-            elif FLAGS.network == 'resnet':
-                print("nothing")
             else:
                 sys.exit("Invalid network [%s]" % args.network)
       
@@ -118,7 +118,7 @@ def main(_):
             start_time = time.time()
             _, step_loss = sess.run([this_model.train_op, this_model.cost], feed_dict = this_model.get_feed_dict())
             end_time = time.time()
-            print("Finish step %d, loss = %f, speed = %f sampes/s" % (current_step, step_loss, FLAGS.batch_size / (end_time - start_time)))
+            print("Finish step %d, loss = %f, speed = %f sampes/s, duration = %f seconds" % (current_step, step_loss, FLAGS.batch_size / (end_time - start_time), end_time - start_time))
             duration += end_time - start_time
 
         print ("Total Time = %f s." % duration)
