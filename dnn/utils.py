@@ -1,6 +1,11 @@
 import os
-import tensorflow as tf
+import sys
+import tarfile
+from six.moves import urllib
 import time
+
+import tensorflow as tf
+
 
 
 def clean_output(directory, prefix, max_to_keep, interval):
@@ -58,3 +63,20 @@ def print_model():
     for v in tf.trainable_variables():
         print("parameter:", v.name, "device:", v.device, "shape:", v.get_shape())
     print("------------------------------------------------")
+
+
+def maybe_download_and_extract(data_dir, data_url):
+    if not os.path.exists(data_dir):
+        os.makedirs(data_dir)
+    filename = data_url.split('/')[-1]
+    filepath = os.path.join(data_dir, filename)
+    if not os.path.exists(filepath):
+        def _progress(count, block_size, total_size):
+            sys.stdout.write('\r>> Downloading %s %.1f%%' % (filename,
+                float(count * block_size) / float(total_size) * 100.0))
+        sys.stdout.flush()
+        filepath, _ = urllib.request.urlretrieve(data_url, filepath, _progress)
+        print()
+        statinfo = os.stat(filepath)
+        print('Successfully downloaded %s [%d bytes] from %s to %s.' % (filename, statinfo.st_size, data_url, data_dir))
+        tarfile.open(filepath, 'r:gz').extractall(data_dir)

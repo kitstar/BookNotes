@@ -10,7 +10,7 @@ import tensorflow as tf
 import time
 import tempfile
 from utils import print_model, real_type, maybe_download_and_extract
-import data_utils.cifar
+import data_utils.cifar as cifar
 
 FLAGS = None
 
@@ -37,7 +37,9 @@ def main(_):
         server.join()
     elif FLAGS.job_name == "worker":
         maybe_download_and_extract(FLAGS.data_dir, FLAGS.data_url)
-        FLAGS = cifar.modify_flags(FLAGS) 
+        cifar.modify_flags(FLAGS)
+        print (FLAGS.data_dir)      
+
         # Create and start a server for the local task.
         server = tf.train.Server(cluster,
 #                                 protocol = "grpc_rdma",
@@ -67,6 +69,8 @@ def main(_):
             this_model.build_model()
 
         train_dir = tempfile.mkdtemp()
+        
+        images, labels = cifar.distorted_inputs(FLAGS)
 
         sess_config = tf.ConfigProto(
             allow_soft_placement=True, 
@@ -104,8 +108,6 @@ def main(_):
 
         images, labels = cifar.distorted_inputs(FLAGS)
         
-        return
-
         print ("Start warmup %d epoch." % FLAGS.warmup)
         for _ in range(FLAGS.warmup):
             this_model.get_data() 
