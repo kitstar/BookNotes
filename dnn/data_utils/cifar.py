@@ -12,6 +12,10 @@ from six.moves import urllib
 import tensorflow as tf
 
 
+NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN = 50000
+
+
+
 def _generate_image_and_label_batch(image, label, min_queue_examples,
                                     batch_size, shuffle):
   """Construct a queued batch of images and labels.

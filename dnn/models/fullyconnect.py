@@ -60,8 +60,6 @@ class KitModel:
 
     def loss(self, labels):
         self.target_data = labels
-        print (self.logits)
-        print (labels)
         loss = tf.nn.sparse_softmax_cross_entropy_with_logits(logits = self.logits, labels = self.target_data)
         self.cost = tf.reduce_sum(loss)
         return self.cost

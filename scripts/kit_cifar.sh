@@ -4,16 +4,13 @@
 enable_perf=0
 
 ### Constantis
-local_user="kit"
-username="core"
+username="kit"
 
-host_ip="10.190.172.160"
-server_node_list="docker_list.txt"
-worker_node_list="docker_list.txt"
-docker_image_name="kit1"
-script_path="/home/${local_user}/exp/script/dnn"
+host_ip="192.168.1.120"
+server_node_list="machine_list.txt"
+worker_node_list="machine_list.txt"
+script_path="/home/${username}/exp/script/dnn"
 run_path="/home/${username}/run/dnn"
-docker_run_path="/root/run/dnn"
 python_path="/home/${username}/anaconda2"
 data_path="/home/${username}/exp/data"
 
@@ -21,42 +18,22 @@ ps_port=8700
 worker_port=8800
 process_name='python'
 
-server_script_head+="echo '#!/bin/bash' > ${run_path}/s.sh; chmod +x ${run_path}/s.sh; echo export LD_LIBRARY_PATH=/var/drivers/nvidia/current/lib64:$LD_LIBRARY_PATH >> ${run_path}/s.sh; echo cd ${docker_run_path} >> ${run_path}/s.sh;"
-worker_script_head+="echo '#!/bin/bash' > ${run_path}/w.sh; chmod +x ${run_path}/w.sh; echo export LD_LIBRARY_PATH=/var/drivers/nvidia/current/lib64:$LD_LIBRARY_PATH >> ${run_path}/w.sh; echo cd ${docker_run_path} >> ${run_path}/w.sh;"
+server_script_head+="echo '#!/bin/bash' > ${run_path}/s.sh; chmod +x ${run_path}/s.sh; echo cd ${run_path} >> ${run_path}/s.sh;"
+worker_script_head+="echo '#!/bin/bash' > ${run_path}/w.sh; chmod +x ${run_path}/w.sh; echo cd ${run_path} >> ${run_path}/w.sh;"
 
-network="fc"
+network="alexnet"
 
 
 ### Utils
 function remote_cmd()
 {
-    local ip=${1}
-    shift 
-    ssh -i ./id_rsa -n -l ${username} ${ip} "$*"
-}
-
-
-function remote_docker_cmd()
-{    
-    local ip=${1}
-    shift
-    ssh -i ./id_rsa -n -l ${username} ${ip} docker exec -i --privileged ${docker_image_name} "$*"
+    ssh -n -l ${username} ${1} "${2}"
 }
 
 
 function remote_bg_cmd()
 {
-    local ip=${ip}
-    shift 
-    ssh -i ./id_rsa -n -f -l ${username} ${ip} "{ $* } >/dev/null 2>&1 &"
-}
-
-
-function remote_bg_docker_cmd()
-{    
-    local ip=${1}
-    shift
-    ssh -i ./id_rsa -n -l ${username} ${ip} docker exec -d --privileged ${docker_image_name} "$*"
+    ssh -n -f -l ${username} ${1} "{ ${2} } >/dev/null 2>&1 &"
 }
 
 
@@ -77,9 +54,12 @@ function count_machine()
 ### UDFs
 function install_python()
 {
-    rm -rf ${python_path}
-    echo copying from source
-    scp -r -q -C ${username}@10.172.140.102:${python_path} ${python_path}
+    if [ $# -gt 1 ]
+    then
+        rm -rf ${python_path}
+        echo copying from source
+        scp -r -q -C ${username}@10.172.140.102:${python_path} ${python_path}
+    fi
 
     while IFS= read -r line; do
         if [ "${line:0:1}" != "#" ] && [ "${line}" != ${host_ip} ] 
@@ -121,8 +101,7 @@ function gen_script()
             if [ ${index} -gt 0 ]; then
                 ps_list+=','
             fi
-            local net_ip=$(echo ${line} | awk '{print $2}')
-            ps_list+="${net_ip}:${ps_port}"
+            ps_list+="${line}:${ps_port}"
             (( index += 1 ))
         fi
     done < ${server_node_list}
@@ -135,8 +114,7 @@ function gen_script()
             if [ ${index} -gt 0 ]; then
                 worker_list+=','
             fi
-            local net_ip=$(echo ${line} | awk '{print $2}')
-            worker_list+="${net_ip}:${worker_port}"
+            worker_list+="${line}:${worker_port}"
             (( index += 1 ))
         fi
     done < ${worker_node_list}
@@ -145,16 +123,15 @@ function gen_script()
     while IFS= read -r line; do
         if [ "${line:0:1}" != "#" ]
         then
-            local ip=$(echo ${line} | awk '{print $1}')
-            echo "Generating server script to" ${ip}
+            echo "Generating server script to " ${line}
             local server_cmd=${server_script_head}
             if [ ${enable_perf} -eq 1 ]
             then
-                server_cmd+="echo \"perf record -q -g -o server.perf python -u kit_benchmark.py --ps_hosts=${ps_list} --worker_hosts=${worker_list} --job_name=ps --task_index=${index} \" >> ${run_path}/s.sh"
+                server_cmd+="echo \"perf record -q -g -o server.perf python -u kit_cifar.py --ps_hosts=${ps_list} --worker_hosts=${worker_list} --job_name=ps --task_index=${index} \" >> ${run_path}/s.sh"
             else
-                server_cmd+="echo \"python -u kit_benchmark.py --ps_hosts=${ps_list} --worker_hosts=${worker_list} --job_name=ps --task_index=${index} 2>&1 | tee s.result.txt \" >> ${run_path}/s.sh"
+                server_cmd+="echo \"python -u kit_cifar.py --ps_hosts=${ps_list} --worker_hosts=${worker_list} --job_name=ps --task_index=${index} 2>&1 | tee s.result.txt \" >> ${run_path}/s.sh"
             fi
-            remote_cmd ${ip} "${server_cmd}"
+            remote_cmd ${line} "${server_cmd}"
             (( index += 1 ))
         fi
     done < ${server_node_list}
@@ -163,16 +140,15 @@ function gen_script()
     while IFS= read -r line; do
         if [ "${line:0:1}" != "#" ]
         then
-            local ip=$(echo ${line} | awk '{print $1}')
-            echo "Generating worker script to" ${ip}
+            echo "Generating worker script to " ${line}
             local worker_cmd=${worker_script_head}
             if [ ${enable_perf} -eq 1 ]
             then
-                worker_cmd+="echo \"perf record -q -g -o worker.perf python -u kit_benchmark.py --ps_hosts=${ps_list} --worker_hosts=${worker_list} --job_name=worker --task_index=${index} $*\" >> ${run_path}/w.sh"
+                worker_cmd+="echo \"perf record -q -g -o worker.perf python -u kit_cifar.py --ps_hosts=${ps_list} --worker_hosts=${worker_list} --job_name=worker --task_index=${index} $*\" >> ${run_path}/w.sh"
             else
-                worker_cmd+="echo \"python -u kit_benchmark.py --network=${network} --ps_hosts=${ps_list} --worker_hosts=${worker_list} --job_name=worker --task_index=${index} $* 2>&1 | tee w.result.txt  \" >> ${run_path}/w.sh"
+                worker_cmd+="echo \"python -u kit_cifar.py --network=${network} --ps_hosts=${ps_list} --worker_hosts=${worker_list} --job_name=worker --task_index=${index} $* 2>&1 | tee w.result.txt  \" >> ${run_path}/w.sh"
             fi
-            remote_cmd ${ip} "${worker_cmd}"
+            remote_cmd ${line} "${worker_cmd}"
             (( index += 1 ))
         fi
     done < ${worker_node_list}
@@ -184,9 +160,8 @@ function start_server()
     while IFS= read -r line; do
         if [ "${line:0:1}" != "#" ]
         then
-            local ip=$(echo ${line} | awk '{print $1}')
-            echo "Start server process ${ip}"
-            remote_bg_docker_cmd ${ip} "${docker_run_path}/s.sh"
+            echo "Start server process ${line}"
+            remote_bg_cmd ${line} "${run_path}/s.sh &"
         fi
     done < ${server_node_list}    
 }
@@ -200,13 +175,13 @@ function start_worker()
         if [ "${line:0:1}" != "#" ]
         then
             (( index += 1))
-            local ip=$(echo ${line} | awk '{print $1}')
-            echo "Start worker process ${ip}"
+            echo "Start worker process ${line}"
             if [ ${index} -lt ${mc} ]
             then
-                remote_bg_docker_cmd ${ip} "${docker_run_path}/w.sh"
+                remote_bg_cmd ${line} "${run_path}/w.sh &"
             else
-                remote_docker_cmd ${ip} "${docker_run_path}/w.sh"
+                remote_cmd ${line} "${run_path}/w.sh"
+                #echo abc
             fi
         fi
     done < ${worker_node_list}
@@ -228,15 +203,26 @@ function perf_worker()
 
 
 ### Functions
+function run_cmd()
+{
+    while IFS= read -r line; do
+        if [ "${line:0:1}" != "#" ]
+        then
+            echo "Execute command " "$*" " in " ${line}
+            remote_cmd ${line} $*
+        fi
+    done < <(sort ${server_node_list} ${worker_node_list} | uniq)
+}
+
+
 function kill_process()
 {
     while IFS= read -r line; do
         if [ "${line:0:1}" != "#" ] 
         then
-            local ip=$(echo ${line} | awk '{print $1}')
-            echo "Killing process" ${ip}
-            remote_docker_cmd ${ip} "pkill -9 -u root -f ${process_name}"
-            remote_cmd ${ip} "rm -f ${run_path}/*.result.txt"
+            echo "Killing process" ${line}
+            remote_cmd ${line} "pkill -9 -u ${username} -f ${process_name}"
+            remote_cmd ${line} "rm -f ${run_path}/*.result.txt"
         fi
     done < <(sort ${server_node_list} ${worker_node_list} | uniq)
 }
@@ -247,26 +233,12 @@ function print_process()
     while IFS= read -r line; do
         if [ "${line:0:1}" != "#" ] 
         then
-            local ip=$(echo ${line} | awk '{print $1}')
-            echo "Print process" ${ip}
-            remote_docker_cmd ${ip} "ps aux | grep ${process_name}"
+            echo "Print process" ${line}
+            remote_cmd ${line} "ps aux | grep ${process_name}"
             echo ""
         fi
     done < <(sort ${server_node_list} ${worker_node_list} | uniq)
 }
-
-
-function remote_cmds()
-{
-    while IFS= read -r line; do
-        if [ "${line:0:1}" != "#" ] 
-        then
-            echo "Execute command " "$*" " in " ${line}
-            remote_docker_cmd ${line} $*
-        fi
-    done < <(sort ${server_node_list} ${worker_node_list} | uniq)
-}
-
 
 
 function get_log()
@@ -278,9 +250,7 @@ function get_log()
         then
             if [ ${idx} -eq 0 ]
             then
-                local ip=$(echo ${line} | awk '{print $1}')
-                echo "Print server log from" ${ip}
-                remote_cmd ${ip} "cat ${run_path}/s.result.txt"
+                remote_cmd ${line} "cat ${run_path}/s.result.txt"
             fi
             (( idx -= 1))
         fi
@@ -291,9 +261,8 @@ function get_log()
         then
             if [ ${idx} -eq 0 ]
             then
-                local ip=$(echo ${line} | awk '{print $1}')
-                echo "Print worker log from" ${ip}
-                remote_cmd ${ip} "cat ${run_path}/w.result.txt"
+                echo "Print log from" ${line}
+                remote_cmd ${line} "cat ${run_path}/w.result.txt"
             fi
             (( idx -= 1))
         fi
@@ -304,8 +273,8 @@ function get_log()
 function setup () 
 {
     kill_process
-#    install_python
-    copy_tensorflow
+    install_python
+#    copy_tensorflow
 }
 
 
@@ -330,10 +299,9 @@ function copy_model()
     while IFS= read -r line; do
         if [ "${line:0:1}" != "#" ]
         then
-            local ip=$(echo ${line} | awk '{print $1}')
-            echo "copying models to ${ip}"
-            remote_cmd ${ip} "mkdir -p ${run_path}"
-            scp -r -C -i ./id_rsa ${script_path}/* ${username}@${ip}:${run_path}
+            echo "copying scripts to ${line}"
+            remote_cmd ${line} "mkdir -p ${run_path}"
+            scp -r -q -C ${script_path}/* ${username}@${line}:${run_path}
         fi
     done < <(sort ${server_node_list} ${worker_node_list} | uniq)
 }
@@ -386,13 +354,14 @@ case "${1}" in
     "copymodel" | "cm") copy_model
     ;;
 
-    "remote_cmd" | "rc") 
-        shift
-        remote_cmds $*
-    ;;
-
     "copydata" | "cd") copy_data
     ;;
+
+    "run_cmd" | "rc")
+        shift
+        run_cmd $*
+    ;;
+
 
     "startall" | "sa") startall
     ;;

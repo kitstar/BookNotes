@@ -66,15 +66,16 @@ def main(_):
                 sys.exit("Invalid network [%s]" % args.network)
       
             this_model = KitModel(FLAGS)
-            this_model.build_model()
+            images, labels = cifar.distorted_inputs(FLAGS) 
+            logits = this_model.inference(images)
+            loss = this_model.loss(labels)
+            train_op = this_model.train()
 
         train_dir = tempfile.mkdtemp()
         
-        images, labels = cifar.distorted_inputs(FLAGS)
-
         sess_config = tf.ConfigProto(
             allow_soft_placement=True, 
-            log_device_placement=True,
+            log_device_placement=False,
             device_filters=["/job:ps", "/job:worker/task:%d" % FLAGS.task_index],
 
             graph_options=tf.GraphOptions(
@@ -105,22 +106,18 @@ def main(_):
         sess = sv.prepare_or_wait_for_session(server.target, config = sess_config, start_standard_services = True)
 
         print_model()
-
-        images, labels = cifar.distorted_inputs(FLAGS)
-        
+       
         print ("Start warmup %d epoch." % FLAGS.warmup)
         for _ in range(FLAGS.warmup):
-            this_model.get_data() 
-            sess.run(this_model.train_op, feed_dict = this_model.get_feed_dict())
+            sess.run(this_model.train_op)
 
         current_step = 0
         duration = 0
         while current_step < FLAGS.epoch:
             current_step += 1
-            this_model.get_data() 
             print("Start step %d" % current_step)
             start_time = time.time()
-            _, step_loss = sess.run([this_model.train_op, this_model.cost], feed_dict = this_model.get_feed_dict())
+            _, step_loss = sess.run([this_model.train_op, this_model.cost])
             end_time = time.time()
             print("Finish step %d, loss = %f, speed = %f sampes/s, duration = %f seconds" % (current_step, step_loss, FLAGS.batch_size / (end_time - start_time), end_time - start_time))
             duration += end_time - start_time
@@ -129,7 +126,7 @@ def main(_):
         #writer.close()
 
     else:
-        sys.exit("Invalid job role name [%s]!" % args.job_name)
+        sys.exit("Invalid job role name [%s]!" % FLAGS.job_name)
 
  
 if __name__ == "__main__":
