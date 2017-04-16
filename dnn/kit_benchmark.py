@@ -46,7 +46,9 @@ def main(_):
             cluster=cluster)):
             
             if FLAGS.network == 'lstm':
-                from models.lstm import build_model, get_data
+                from models.lstm import KitModel
+            elif FLAGS.network == 'gru':
+                from models.gru import KitModel
             elif FLAGS.network == 'fc':
                 from models.fullyconnect import KitModel
             elif FLAGS.network == 'alexnet':

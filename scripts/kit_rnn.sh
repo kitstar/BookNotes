@@ -279,7 +279,7 @@ function auth()
 }
 
 
-function copy_script()
+function copy_model()
 {
     while IFS= read -r line; do
         if [ "${line:0:1}" != "#" ]
@@ -335,7 +335,7 @@ case "${1}" in
         gen_script $*
     ;;
 
-    "copyscript" | "cs") copy_script
+    "copymodel" | "cm") copy_model
     ;;
 
     "copydata" | "cd") copy_data

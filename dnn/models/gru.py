@@ -32,7 +32,7 @@ class KitModel:
         self.targets = tf.placeholder(tf.int32, shape = (self.FLAGS.num_steps, self.FLAGS.batch_size))
                 
 #        lstm = tf.nn.rnn_cell.LSTMCell(self.FLAGS.hidden_size)
-        lstm = tf.contrib.rnn.LSTMCell(self.FLAGS.hidden_size)
+        lstm = tf.contrib.rnn.GRUCell(self.FLAGS.hidden_size)
         stacked_lstm = tf.contrib.rnn.MultiRNNCell([lstm] * self.FLAGS.num_layers)  
         initial_state = state = stacked_lstm.zero_state(self.FLAGS.batch_size, real_type(self.FLAGS))
 
