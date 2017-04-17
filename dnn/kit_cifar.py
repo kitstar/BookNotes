@@ -54,6 +54,8 @@ def main(_):
             
             if FLAGS.network == 'fc':
                 from models.fullyconnect import KitModel
+            elif FLAGS.network == 'cifar':
+                from models.cifar import KitModel
             elif FLAGS.network == 'alexnet':
                 from models.alexnet import KitModel
             elif FLAGS.network == 'vgg19' or FLAGS.network == 'vgg_e':
@@ -63,7 +65,7 @@ def main(_):
             elif FLAGS.network == 'resnet':                
                 from models.resnet import KitModel
             else:
-                sys.exit("Invalid network [%s]" % args.network)
+                sys.exit("Invalid network [%s]" % FLAGS.network)
       
             this_model = KitModel(FLAGS)
             images, labels = cifar.distorted_inputs(FLAGS) 
