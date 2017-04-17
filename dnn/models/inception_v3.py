@@ -40,7 +40,7 @@ class KitModel:
 
     def get_data(self):
         self.inputs_data = np.random.rand(self.FLAGS.batch_size, 299, 299, 3)
-        self.targets_data = np.random.rand(self.FLAGS.batch_size)
+        self.targets_data = np.random.randint(self.FLAGS.num_classes, size = self.FLAGS.batch_size)
 
     def get_feed_dict(self):
         return { self.inputs : self.inputs_data, self.targets : self.targets_data }
