@@ -277,8 +277,8 @@ def dist_train(FLAGS_, server, cluster):
       log_device_placement=True,
       device_filters=["/job:ps", "/job:worker/task:%d" % FLAGS.task_index])
 
-  if FLAGS.infer_shape == True:
-      sess_config.set_infer_shape(FLAGS.infer_shape)
+  if FLAGS.infer_shapes == True:
+      sess_config.graph_options.infer_shapes = FLAGS.infer_shapes
 
   sv = tf.train.Supervisor(
       is_chief = (FLAGS.task_index == 0),
