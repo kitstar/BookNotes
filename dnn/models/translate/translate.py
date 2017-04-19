@@ -212,6 +212,9 @@ def train():
                                    target_weights, bucket_id, False)
       step_time += (time.time() - start_time) / FLAGS.steps_per_checkpoint
       loss += step_loss / FLAGS.steps_per_checkpoint
+      
+      print("Finish step %d, loss = %f, speed = %f sampes/s, duration = %f seconds" % (current_step, step_loss, FLAGS.batch_size / step_time, step_time))
+      
       current_step += 1
 
       # Once in a while, we save checkpoint, print statistics, and run evals.
