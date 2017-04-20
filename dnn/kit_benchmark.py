@@ -274,7 +274,7 @@ if __name__ == "__main__":
   parser.add_argument("--from_dev_data", type=str, default = None, help = "Training data.")
   parser.add_argument("--to_dev_data", type=str, default = None, help = "Training data.")
   parser.add_argument("--max_train_data_size", type = int, default = 0, help = "Limit on the size of training data (0: no limit).")
-  parser.add_argument("--steps_per_checkpoint", type = int, default = 2000, help = "How many training steps to do per checkpoint.")
+  parser.add_argument("--steps_per_checkpoint", type = int, default = 200, help = "How many training steps to do per checkpoint.")
   parser.add_argument("--decode", type = bool, default = False, help = "Set to True for interactive decoding.")
 
   FLAGS, unparsed = parser.parse_known_args()

@@ -299,7 +299,7 @@ def dist_train(FLAGS_, server, cluster):
   print ("Reading development and training data (limit: %d)."
          % FLAGS.max_train_data_size)
   dev_set = read_data(from_dev, to_dev)
-  train_set = read_data(from_train, to_train, (FLAGS.epoch + FLAGS.warmup + 1) * FLAGS.batch_size)
+  train_set = read_data(from_train, to_train)
   train_bucket_sizes = [len(train_set[b]) for b in xrange(len(_buckets))]
   train_total_size = float(sum(train_bucket_sizes))
 
