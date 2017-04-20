@@ -214,9 +214,6 @@ def train():
       duration += time.time() - start_time
       loss += step_loss / FLAGS.steps_per_checkpoint
       
-      #print("Finish step %d, loss = %f, speed = %f sampes/s, duration = %f seconds" % (current_step, step_loss, FLAGS.batch_size / step_time, step_time))
-      print("Time: %f seconds, loss: %f" % (duration, step_loss))
-      
       current_step += 1
 
       # Once in a while, we save checkpoint, print statistics, and run evals.
@@ -276,7 +273,7 @@ def dist_train(FLAGS_, server, cluster):
 
   sess_config = tf.ConfigProto(
       allow_soft_placement=True,
-      log_device_placement=True,
+      log_device_placement=False,
       device_filters=["/job:ps", "/job:worker/task:%d" % FLAGS.task_index])
 
   if FLAGS.infer_shapes == True:
@@ -301,7 +298,7 @@ def dist_train(FLAGS_, server, cluster):
   # Read data into buckets and compute their sizes.
   print ("Reading development and training data (limit: %d)."
          % FLAGS.max_train_data_size)
-  dev_set = read_data(from_dev, to_dev, max_size = FLAGS.epoch * FLAGS.batch_size * 2)
+  dev_set = read_data(from_dev, to_dev)
   train_set = read_data(from_train, to_train, (FLAGS.epoch + FLAGS.warmup + 1) * FLAGS.batch_size)
   train_bucket_sizes = [len(train_set[b]) for b in xrange(len(_buckets))]
   train_total_size = float(sum(train_bucket_sizes))
@@ -325,16 +322,15 @@ def dist_train(FLAGS_, server, cluster):
                      if train_buckets_scale[i] > random_number_01])
 
     # Get a batch and make a step.
+    start_time = time.time()
     encoder_inputs, decoder_inputs, target_weights = model.get_batch(
         train_set, bucket_id)
-    start_time = time.time()
     _, step_loss, _ = model.step(sess, encoder_inputs, decoder_inputs,
                                  target_weights, bucket_id, False)
+    step_time += (time.time() - start_time) / FLAGS.steps_per_checkpoint
     duration += time.time() - start_time
     loss += step_loss / FLAGS.steps_per_checkpoint
     current_step += 1
-    #print("Finish step %d, loss = %f, speed = %f sampes/s" % (current_step, step_loss, FLAGS.batch_size / (time.time() - start_time)))
-    print("Time: %f seconds, loss: %f" % (duration, step_loss))
     # Once in a while, we save checkpoint, print statistics, and run evals.
     if current_step % FLAGS.steps_per_checkpoint == 0:
         # Print statistics for the previous epoch.
@@ -342,6 +338,7 @@ def dist_train(FLAGS_, server, cluster):
         print ("global step %d learning rate %.4f step-time %.2f perplexity "
                "%.2f" % (model.global_step.eval(), model.learning_rate.eval(),
                          step_time, perplexity))
+        print ("Time: %f seconds, Perplexity: %f" % (duration, perplexity))
         # Decrease learning rate if no improvement was seen over last 3 times.
         if len(previous_losses) > 2 and loss > max(previous_losses[-3:]):
           sess.run(model.learning_rate_decay_op)
