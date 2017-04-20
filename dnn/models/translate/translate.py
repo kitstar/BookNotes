@@ -324,16 +324,16 @@ def dist_train(FLAGS_, server, cluster):
                      if train_buckets_scale[i] > random_number_01])
 
     # Get a batch and make a step.
-    start_time = time.time()
     encoder_inputs, decoder_inputs, target_weights = model.get_batch(
         train_set, bucket_id)
+    start_time = time.time()
     _, step_loss, _ = model.step(sess, encoder_inputs, decoder_inputs,
                                  target_weights, bucket_id, False)
-    step_time += (time.time() - start_time) / FLAGS.steps_per_checkpoint
+    duration += time.time() - start_time
     loss += step_loss / FLAGS.steps_per_checkpoint
     current_step += 1
-    print("Finish step %d, loss = %f, speed = %f sampes/s" % (current_step, step_loss, FLAGS.batch_size / (time.time() - start_time)))
-
+    #print("Finish step %d, loss = %f, speed = %f sampes/s" % (current_step, step_loss, FLAGS.batch_size / (time.time() - start_time)))
+    print("Time: %f seconds, loss: %f" % (duration, step_loss))
     # Once in a while, we save checkpoint, print statistics, and run evals.
     if current_step % FLAGS.steps_per_checkpoint == 0:
         # Print statistics for the previous epoch.
