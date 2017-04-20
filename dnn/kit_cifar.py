@@ -13,6 +13,8 @@ from utils import print_model, real_type, maybe_download_and_extract
 import data_utils.cifar as cifar
 
 FLAGS = None
+NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN = 50000
+NUM_EXAMPLES_PER_EPOCH_FOR_EVAL = 10000
 
 
 def main(_):  
@@ -109,20 +111,27 @@ def main(_):
 
         print_model()
        
-        print ("Start warmup %d epoch." % FLAGS.warmup)
+        print ("Start warmup for %d mini-batch." % FLAGS.warmup)
         for _ in range(FLAGS.warmup):
             sess.run(this_model.train_op)
 
         current_step = 0
+        current_epoch = 1
         duration = 0
+        FLAGS.epoch = FLAGS.epoch * NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN / FLAGS.batch_size
+        print ("Start Training for %d mini-batch." % FLAGS.epoch)
         while current_step < FLAGS.epoch:
             current_step += 1
-            print("Start step %d" % current_step)
             start_time = time.time()
             _, step_loss = sess.run([this_model.train_op, this_model.cost])
             end_time = time.time()
-            print("Finish step %d, loss = %f, speed = %f sampes/s, duration = %f seconds" % (current_step, step_loss, FLAGS.batch_size / (end_time - start_time), end_time - start_time))
+#            print("Finish step %d, loss = %f, speed = %f sampes/s, duration = %f seconds" % (current_step, step_loss, FLAGS.batch_size / (end_time - start_time), end_time - start_time))
             duration += end_time - start_time
+            print("Time: %f seconds, step_loss:  %f" % (duration, step_loss))
+            if current_step * FLAGS.batch_size > current_epoch * NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN:
+                print ("Finish epoch %d" % (current_epoch))
+                current_epoch += 1
+
 
         print ("Total Time = %f s." % duration)
         #writer.close()
@@ -213,7 +222,7 @@ if __name__ == "__main__":
   parser.add_argument(
       "--warmup", "-w",
       type=int,
-      default=0,
+      default=3,
       help="Warm up epoch"
   )
 
