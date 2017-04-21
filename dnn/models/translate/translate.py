@@ -314,6 +314,7 @@ def dist_train(FLAGS_, server, cluster):
   current_step = 0
   previous_losses = []
   duration = 0
+  print ("Kit: Start working. batch_size = %d, epoch = %d" % (FLAGS.batch_size, FLAGS.epoch))
   while current_step < FLAGS.warmup + FLAGS.epoch:
     # Choose a bucket according to data distribution. We pick a random number
     # in [0, 1] and use the corresponding interval in train_buckets_scale.
