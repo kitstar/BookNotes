@@ -81,6 +81,23 @@ FLAGS = tf.app.flags.FLAGS
 _buckets = [(5, 10), (10, 15), (20, 25), (40, 50)]
 
 
+def print_model():
+    print("Local variables are:")
+    for v in tf.local_variables():
+        print("parameter:", v.name, "device:", v.device, "shape:", v.get_shape())
+    print("------------------------------------------------")
+
+    print("Global variables are:")
+    for v in tf.global_variables():
+        print("parameter:", v.name, "device:", v.device, "shape:", v.get_shape())
+    print("------------------------------------------------")
+
+    print("Trainable variables are:")
+    for v in tf.trainable_variables():
+        print("parameter:", v.name, "device:", v.device, "shape:", v.get_shape())
+    print("------------------------------------------------")
+
+
 def read_data(source_path, target_path, max_size=None):
   """Read data from source and target files and put into buckets.
 
@@ -287,6 +304,7 @@ def dist_train(FLAGS_, server, cluster):
       summary_writer = None,
         saver = None)
 
+  print_model()
   if FLAGS.task_index == 0:
     print("Worker %d: Initializing session..." % FLAGS.task_index)
   else:
