@@ -335,17 +335,17 @@ def dist_train(FLAGS_, server, cluster):
     if current_step % FLAGS.steps_per_checkpoint == 0:
         # Print statistics for the previous epoch.
         perplexity = math.exp(float(loss)) if loss < 300 else float("inf")
-        print ("global step %d learning rate %.4f step-time %.2f perplexity "
-               "%.2f" % (model.global_step.eval(sess), model.learning_rate.eval(sess),
-                         step_time, perplexity))
-        print ("Time: %f seconds, Perplexity: %f" % (duration, perplexity))
+#        print ("global step %d learning rate %.4f step-time %.2f perplexity "
+#               "%.2f" % (model.global_step.eval(sess), model.learning_rate.eval(sess),
+#                         step_time, perplexity))
+        print ("Time: %f seconds, step_time: %f seconds, loss: %f, Perplexity: %f" % (duration, step_time, loss, perplexity))
         # Decrease learning rate if no improvement was seen over last 3 times.
         if len(previous_losses) > 2 and loss > max(previous_losses[-3:]):
           sess.run(model.learning_rate_decay_op)
         previous_losses.append(loss)
         # Save checkpoint and zero timer and loss.
         checkpoint_path = os.path.join(FLAGS.train_dir, "translate.ckpt")
-        model.saver.save(sess, checkpoint_path, global_step=model.global_step)
+#        model.saver.save(sess, checkpoint_path, global_step=model.global_step)
         step_time, loss = 0.0, 0.0
         # Run evals on development set and print their perplexity.
         for bucket_id in xrange(len(_buckets)):
