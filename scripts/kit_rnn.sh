@@ -126,7 +126,7 @@ function gen_script()
             then
                 server_cmd+="echo \"perf record -q -g -o server.perf python -u kit_benchmark.py --ps_hosts=${ps_list} --worker_hosts=${worker_list} --job_name=ps --task_index=${index} \" >> ${run_path}/s.sh"
             else
-                server_cmd+="echo \"python -u kit_benchmark.py --ps_hosts=${ps_list} --worker_hosts=${worker_list} --job_name=ps --task_index=${index} 2>&1 | tee s.result.txt \" >> ${run_path}/s.sh"
+                server_cmd+="echo \"CUDA_VISIABLE_DEVICE="0" python -u kit_benchmark.py --ps_hosts=${ps_list} --worker_hosts=${worker_list} --job_name=ps --task_index=${index} 2>&1 | tee s.result.txt \" >> ${run_path}/s.sh"
             fi
             remote_cmd ${line} "${server_cmd}"
             (( index += 1 ))
@@ -143,7 +143,7 @@ function gen_script()
             then
                 worker_cmd+="echo \"perf record -q -g -o worker.perf python -u kit_benchmark.py --ps_hosts=${ps_list} --worker_hosts=${worker_list} --job_name=worker --task_index=${index} $*\" >> ${run_path}/w.sh"
             else
-                worker_cmd+="echo \"python -u kit_benchmark.py --network=${network} --ps_hosts=${ps_list} --worker_hosts=${worker_list} --job_name=worker --task_index=${index} $* 2>&1 | tee w.result.txt  \" >> ${run_path}/w.sh"
+                worker_cmd+="echo \"CUDA_VISIABLE_DEVICE="0" python -u kit_benchmark.py --network=${network} --ps_hosts=${ps_list} --worker_hosts=${worker_list} --job_name=worker --task_index=${index} $* 2>&1 | tee w.result.txt  \" >> ${run_path}/w.sh"
             fi
             remote_cmd ${line} "${worker_cmd}"
             (( index += 1 ))
