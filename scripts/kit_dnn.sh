@@ -9,7 +9,7 @@ username="kit"
 host_ip="192.168.1.120"
 server_node_list="machine_list.txt"
 worker_node_list="machine_list.txt"
-script_path="/home/${username}/exp/script/dnn"
+model_path="/home/${username}/exp/script/dnn"
 run_path="/home/${username}/run/dnn"
 python_path="/home/${username}/anaconda2"
 data_path="/home/${username}/exp/data"
@@ -286,7 +286,7 @@ function copy_model()
         then
             echo "copying scripts to ${line}"
             remote_cmd ${line} "mkdir -p ${run_path}"
-            scp -r -q -C ${script_path}/* ${username}@${line}:${run_path}
+            scp -r -q -C ${model_path}/* ${username}@${line}:${run_path}
         fi
     done < <(sort ${server_node_list} ${worker_node_list} | uniq)
 }
