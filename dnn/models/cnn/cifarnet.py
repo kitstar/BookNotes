@@ -58,7 +58,7 @@ def cifarnet(images, num_classes=10, is_training=False,
   end_points = {}
 
   with tf.variable_scope(scope, 'CifarNet', [images, num_classes]):
-    net = slim.conv2d(images, 64, [5, 5], scope='conv1')
+    net = slim.conv2d(images, 64, (5, 5), scope='conv1')
     end_points['conv1'] = net
     net = slim.max_pool2d(net, [2, 2], 2, scope='pool1')
     end_points['pool1'] = net

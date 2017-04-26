@@ -5,11 +5,15 @@ import numpy as np
 import tensorflow as tf
 import time
 import tempfile
+from models.cnn.datasets import dataset_factory
+from models.cnn.preprocessing import preprocessing_factory
 from models.cnn import nets_factory
 from utils import print_model, real_type
 import data_utils.cifar as cifar
 
 FLAGS = None
+
+slim = tf.contrib.slim
 
 
 def main(_):  
@@ -43,12 +47,39 @@ def main(_):
         ######################
         # Select the dataset #
         ######################
-        # dataset = dataset_factory.get_dataset(FLAGS.dataset_name, FLAGS.dataset_split_name, FLAGS.dataset_dir)
+        dataset = dataset_factory.get_dataset(FLAGS.dataset_name, FLAGS.dataset_split_name, FLAGS.data_dir)
+
+        #####################################
+        # Select the preprocessing function #
+        #####################################
+        image_preprocessing_fn = preprocessing_factory.get_preprocessing(
+                FLAGS.network,
+                is_training = True)
 
         ######################
         # Select the network #
         ######################
         network_fn = nets_factory.get_network_fn(FLAGS.network, FLAGS.num_classes, is_training = True)
+
+
+        provider = slim.dataset_data_provider.DatasetDataProvider(
+                dataset,
+                num_readers = FLAGS.num_readers,
+                common_queue_capacity = 20 * FLAGS.batch_size,
+                common_queue_min = 10 * FLAGS.batch_size)
+
+        [image, label] = provider.get(['image', 'label'])
+
+        image = image_preprocessing_fn(image, network_fn.default_image_size, network_fn.default_image_size)
+
+        images, labels = tf.train.batch(
+                [image, label],
+                batch_size = FLAGS.batch_size,
+                num_threads = 4,
+                capacity = 5 * FLAGS.batch_size)
+
+        print (images)
+        print (labels)
 
         with tf.device(tf.train.replica_device_setter(
                 ps_device = '/job:ps/cpu:0',
@@ -57,7 +88,7 @@ def main(_):
             
             global_step = tf.contrib.framework.get_or_create_global_step()
             
-            images, labels = cifar.distorted_inputs(FLAGS) 
+            #images, labels = cifar.distorted_inputs(FLAGS) 
             logits, end_points = network_fn(images)
             loss = tf.nn.sparse_softmax_cross_entropy_with_logits(logits = logits, labels = labels)
             cost = tf.reduce_mean(loss)
@@ -154,20 +185,41 @@ if __name__ == "__main__":
       help="Index of task within the job"
   )
 
-
-  # Flags for algorithm
   parser.add_argument(
       "--infer_shapes",
       type=bool,
       default=False,
       help="if use rdma"
   )
+ 
 
+  parser.add_argument(
+      "--num_readers",
+      type=int,
+      default = 4,
+      help = "The number of parallel readers that read data from the dataset."
+  )
+
+  # Flags for network
   parser.add_argument(
       "--network", "-g",
       type=str,
-      default="lstm",
-      help="lstm/fc/alexnet/vgg19/inception_v3"
+      default="cifarnet",
+      help="cifar/alexnet/vgg19/inception_v3"
+  )
+
+  parser.add_argument(
+      "--dataset_name",
+      type=str,
+      default="",
+      help="Training dataset name. cifar10/imagenet/flower/mnist"
+  )
+
+  parser.add_argument(
+      "--dataset_split_name",
+      type=str,
+      default="train",
+      help="Training dataset name. train/eval/test"
   )
 
   parser.add_argument(
@@ -206,26 +258,11 @@ if __name__ == "__main__":
       help="Batch Size"
   )
 
-
-  parser.add_argument(
-      "--num_steps", "-n",
-      type=int,
-      default=10,
-      help="number of step for rnn"
-  )
-
   parser.add_argument(
       "--hidden_size",
       type=int,
       default=200,
       help="Hidden Cell Size for rnn and cnn"
-  )
-
-  parser.add_argument(
-      "--vocab_size", "-v",
-      type=int,
-      default=1000,
-      help="Vocabulary Size for run"
   )
 
   parser.add_argument(
@@ -248,22 +285,6 @@ if __name__ == "__main__":
       default=784,
       help="Input features for cnn."
   )
-
-### for seq2seq
-  parser.add_argument("--learning_rate", type=float, default = 0.5, help = "Learning rate.")
-  parser.add_argument("--learning_rate_decay_factor", type=float, default = 0.99, help = "Learning rate decays by this much.")
-  parser.add_argument("--max_gradient_norm", type=float, default = 5.0, help = "Clip gradients to this norm.")
-  parser.add_argument("--size", type=int, default = 1024, help = "Size of each model layer.")
-  parser.add_argument("--from_vocab_size", type=int, default = 40000, help = "English vocabulary size.")
-  parser.add_argument("--to_vocab_size", type=int, default = 40000, help = "French vocabulary size.")
-  parser.add_argument("--train_dir", type=str, default = "/tmp", help = "Training directory.")
-  parser.add_argument("--from_train_data", type=str, default = None,  help = "Training data.")
-  parser.add_argument("--to_train_data", type=str, default = None, help = "Training data.")
-  parser.add_argument("--from_dev_data", type=str, default = None, help = "Training data.")
-  parser.add_argument("--to_dev_data", type=str, default = None, help = "Training data.")
-  parser.add_argument("--max_train_data_size", type = int, default = 0, help = "Limit on the size of training data (0: no limit).")
-  parser.add_argument("--steps_per_checkpoint", type = int, default = 200, help = "How many training steps to do per checkpoint.")
-  parser.add_argument("--decode", type = bool, default = False, help = "Set to True for interactive decoding.")
 
   FLAGS, unparsed = parser.parse_known_args()
   print("FLAGS = ", FLAGS)
