@@ -78,9 +78,6 @@ def main(_):
                 num_threads = 4,
                 capacity = 5 * FLAGS.batch_size)
 
-        print (images)
-        print (labels)
-
         with tf.device(tf.train.replica_device_setter(
                 ps_device = '/job:ps/cpu:0',
                 worker_device = ("/job:worker/task:%d" % FLAGS.task_index),
