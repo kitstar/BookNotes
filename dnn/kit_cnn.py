@@ -3,6 +3,7 @@ import sys
 
 import numpy as np
 import tensorflow as tf
+from tensorflow.python.ops import random_ops
 import time
 import tempfile
 from models.cnn.datasets import dataset_factory
@@ -40,7 +41,7 @@ def main(_):
 
         # Create and start a server for the local task.
         server = tf.train.Server(cluster,
-#                                 protocol = "grpc_rdma",
+#                                 protocol = "grpc+verbs",
                                  job_name=FLAGS.job_name,
                                  task_index=FLAGS.task_index)
 
@@ -62,21 +63,25 @@ def main(_):
         network_fn = nets_factory.get_network_fn(FLAGS.network, FLAGS.num_classes, is_training = True)
 
 
-        provider = slim.dataset_data_provider.DatasetDataProvider(
-                dataset,
-                num_readers = FLAGS.num_readers,
-                common_queue_capacity = 20 * FLAGS.batch_size,
-                common_queue_min = 10 * FLAGS.batch_size)
+        if FLAGS.dataset_name != "synthetic" :
+          provider = slim.dataset_data_provider.DatasetDataProvider(
+                  dataset,
+                  num_readers = FLAGS.num_readers,
+                  common_queue_capacity = 20 * FLAGS.batch_size,
+                  common_queue_min = 10 * FLAGS.batch_size)
 
-        [image, label] = provider.get(['image', 'label'])
+          [image, label] = provider.get(['image', 'label'])
 
-        image = image_preprocessing_fn(image, network_fn.default_image_size, network_fn.default_image_size)
+          image = image_preprocessing_fn(image, network_fn.default_image_size, network_fn.default_image_size)
 
-        images, labels = tf.train.batch(
-                [image, label],
-                batch_size = FLAGS.batch_size,
-                num_threads = 4,
-                capacity = 5 * FLAGS.batch_size)
+          images, labels = tf.train.batch(
+                  [image, label],
+                  batch_size = FLAGS.batch_size,
+                  num_threads = 4,
+                  capacity = 5 * FLAGS.batch_size)
+        else:
+          images = random_ops.random_uniform((FLAGS.batch_size, network_fn.default_image_size, network_fn.default_image_size, 3), maxval = 1)
+          labels = random_ops.random_uniform((FLAGS.batch_size, ), maxval = FLAGS.num_classes - 1, dtype = tf.int32)
 
         with tf.device(tf.train.replica_device_setter(
                 ps_device = '/job:ps/cpu:0',

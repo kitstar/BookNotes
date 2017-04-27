@@ -20,10 +20,12 @@ from __future__ import print_function
 
 from models.cnn.datasets import cifar10
 from models.cnn.datasets import imagenet
+from models.cnn.datasets import synthetic
 #from datasets import flowers
 #from datasets import mnist
 
 datasets_map = {
+    'synthetic': synthetic,
     'cifar10': cifar10,
 #    'flowers': flowers,
     'imagenet': imagenet,
