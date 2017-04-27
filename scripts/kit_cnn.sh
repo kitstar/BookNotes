@@ -37,6 +37,18 @@ function remote_bg_cmd()
 }
 
 
+function remote_cmds()
+{
+    while IFS= read -r line; do
+        if [ "${line:0:1}" != "#" ]
+        then
+            echo "Execute command " "$*" " in " ${line}
+            remote_cmd ${line} $*
+        fi
+    done < <(sort ${server_node_list} ${worker_node_list} | uniq)
+}
+
+
 function count_machine()
 {
     local total=0
@@ -328,6 +340,11 @@ case "${1}" in
     ;;
 
     "setup" | "st") setup
+    ;;
+
+    "remote_cmd" | "rc")
+        shift
+        remote_cmds $*
     ;;
 
     "genscript" | "gs") 
