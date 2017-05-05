@@ -1,16 +1,17 @@
 import argparse
 import sys
-
-import numpy as np
-import tensorflow as tf
-from tensorflow.python.ops import random_ops
 import time
 import tempfile
+
+import numpy as np
+
+import tensorflow as tf
+from tensorflow.python.ops import random_ops
+from tensorflow.python.client import timeline
 from models.cnn.datasets import dataset_factory
 from models.cnn.preprocessing import preprocessing_factory
 from models.cnn import nets_factory
 from utils import print_model, real_type
-import data_utils.cifar as cifar
 
 FLAGS = None
 
@@ -136,15 +137,23 @@ def main(_):
         for _ in range(FLAGS.warmup):
             sess.run(train_op)
 
+        options = tf.RunOptions(trace_level = tf.RunOptions.FULL_TRACE)
+        run_metadata = tf.RunMetadata()
         current_step = 0
         duration = 0
         while current_step < FLAGS.epoch:
             current_step += 1
             start_time = time.time()
-            _, step_loss = sess.run([train_op, cost])
+            _, step_loss = sess.run([train_op, cost], options = options, run_metadata = run_metadata)
             end_time = time.time()
-            print("Finish step %d, loss = %f, speed = %f sampes/s, duration = %f seconds" % (current_step, step_loss, FLAGS.batch_size / (end_time - start_time), end_time - start_time))
+            print("Finish step %d, loss = %f, speed = %f sampes/s, duration = %f seconds" % (current_step, step_loss, FLAGS.batch_size / (end_time - start_time), end_time - start_time))        
             duration += end_time - start_time
+
+            if current_step == 3:
+                fetched_timeline = timeline.Timeline(run_metadata.step_stats)
+                chrome_trace = fetched_timeline.generate_chrome_trace_format()
+                with open('timeline.json', 'w') as f:
+                    f.write(chrome_trace)
 
         print ("Total Time = %f s." % duration)
         #writer.close()
