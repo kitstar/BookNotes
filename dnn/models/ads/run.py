@@ -323,12 +323,19 @@ def train_dist(process_index):
                 #    model.train_op, model.loss_fn, model.global_step, model.final, model.pos, model.pos_tensor,
                 #    model.weights, model.labels, model.unweighted_loss, model.final_loss,
                 #    ])
-                #run_metadata = tf.RunMetadata()
                 #term_shapes, step_count = sess.run([model.term_shapes, model.global_step], options=tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE, timeout_in_ms=300), run_metadata=run_metadata)
                 #step_loss = 100
                 #_, step_loss, step_count = sess.run([model.train_op, model.loss_fn, model.global_step], options=tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE), run_metadata=run_metadata)
                 try:
-                    _, step_loss, step_count = sess.run([model.train_op, model.loss_fn, model.global_step], options=tf.RunOptions(timeout_in_ms=FLAGS.session_run_timeout)) #, run_metadata=run_metadata)
+                    options = tf.RunOptions(trace_level = tf.RunOptions.FULL_TRACE, timeout_in_ms = FLAGS.session_run_timeout)
+                    run_metadata = tf.RunMetadata()
+                    _, step_loss, step_count = sess.run([model.train_op, model.loss_fn, model.global_step], options=options, run_metadata = run_metadata))
+                    if local_step == 3:
+                        fetched_timeline = timeline.Timeline(run_metadata.step_stats)
+                        chrome_trace = fetched_timeline.generate_chrome_trace_format()
+                        with open('ads_timeline.json', 'w') as f:
+                            f.write(chrome_trace)
+
                 except tf.errors.DeadlineExceededError:
                     print(datetime.now(), "session run deadline exceed:", FLAGS.session_run_timeout, "session timeout count:", sess_timeout_count)
                     sess_timeout_count += 1
