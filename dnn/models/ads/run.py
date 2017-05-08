@@ -329,7 +329,7 @@ def train_dist(process_index):
                 try:
                     options = tf.RunOptions(trace_level = tf.RunOptions.FULL_TRACE, timeout_in_ms = FLAGS.session_run_timeout)
                     run_metadata = tf.RunMetadata()
-                    _, step_loss, step_count = sess.run([model.train_op, model.loss_fn, model.global_step], options=options, run_metadata = run_metadata))
+                    _, step_loss, step_count = sess.run([model.train_op, model.loss_fn, model.global_step], options=options, run_metadata = run_metadata)
                     if local_step == 3:
                         fetched_timeline = timeline.Timeline(run_metadata.step_stats)
                         chrome_trace = fetched_timeline.generate_chrome_trace_format()
