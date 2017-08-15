@@ -132,6 +132,9 @@ def main(_):
             print("Worker %d: Waiting for session to be initialized..." % FLAGS.task_index)
                
         sess = sv.prepare_or_wait_for_session(server.target, config = sess_config, start_standard_services = True)
+        writer = tf.summary.FileWriter('./graphs', sess.graph)
+        tf.train.export_meta_graph(filename = 'kit_meta_graph.txt', graph = sess.graph, as_text = True)
+        print ("Graph Saved.")
 
         print ("Start warmup %d epoch." % FLAGS.warmup)
         for _ in range(FLAGS.warmup):
@@ -142,6 +145,11 @@ def main(_):
         current_step = 0
         duration = 0
         while current_step < FLAGS.epoch:
+            if current_step == 0:
+                writer = tf.summary.FileWriter('./graphs', sess.graph)                
+                writer.close()
+                tf.train.export_meta_graph('kit_cnn_meta.txt', as_text = True)                
+                print ("Graph saved.")
             current_step += 1
             start_time = time.time()
             _, step_loss = sess.run([train_op, cost], options = options, run_metadata = run_metadata)
