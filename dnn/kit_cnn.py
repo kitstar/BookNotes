@@ -61,7 +61,7 @@ def main(_):
         ######################
         # Select the network #
         ######################
-        network_fn = nets_factory.get_network_fn(FLAGS.network, FLAGS.num_classes, is_training = True)
+        network_fn = nets_factory.get_network_fn(FLAGS.network, dataset.num_classes, is_training = True)
 
 
         if FLAGS.dataset_name != "synthetic" :
@@ -73,7 +73,9 @@ def main(_):
 
           [image, label] = provider.get(['image', 'label'])
 
-          image = image_preprocessing_fn(image, network_fn.default_image_size, network_fn.default_image_size)
+          train_image_size = FLAGS.train_image_size or network_fn.default_image_size
+
+          image = image_preprocessing_fn(image, train_image_size, train_image_size)
 
           images, labels = tf.train.batch(
                   [image, label],
@@ -97,6 +99,7 @@ def main(_):
             cost = tf.reduce_mean(loss)
             train_op = tf.train.AdagradOptimizer(0.01).minimize(cost, global_step = global_step)
 
+        saver = tf.train.Saver()
         print_model()
 
         train_dir = tempfile.mkdtemp()
@@ -124,7 +127,7 @@ def main(_):
             init_op = tf.global_variables_initializer(),
             global_step = global_step,
             summary_writer = None,
-            saver = None)
+            saver = saver)
 
         if FLAGS.task_index == 0:
             print("Worker %d: Initializing session..." % FLAGS.task_index)
@@ -133,8 +136,12 @@ def main(_):
                
         sess = sv.prepare_or_wait_for_session(server.target, config = sess_config, start_standard_services = True)
         writer = tf.summary.FileWriter('./graphs', sess.graph)
+        writer.close()
         tf.train.export_meta_graph(filename = 'kit_meta_graph.txt', graph = sess.graph, as_text = True)
         print ("Graph Saved.")
+
+        coord = tf.train.Coordinator()
+        threads = tf.train.start_queue_runners(sess=sess, coord=coord)
 
         print ("Start warmup %d epoch." % FLAGS.warmup)
         for _ in range(FLAGS.warmup):
@@ -145,11 +152,6 @@ def main(_):
         current_step = 0
         duration = 0
         while current_step < FLAGS.epoch:
-            if current_step == 0:
-                writer = tf.summary.FileWriter('./graphs', sess.graph)                
-                writer.close()
-                tf.train.export_meta_graph('kit_cnn_meta.txt', as_text = True)                
-                print ("Graph saved.")
             current_step += 1
             start_time = time.time()
             _, step_loss = sess.run([train_op, cost], options = options, run_metadata = run_metadata)
@@ -164,7 +166,7 @@ def main(_):
                     f.write(chrome_trace)
 
         print ("Total Time = %f s." % duration)
-        #writer.close()
+        saver.save(sess, "kit_alexnet")
 
     else:
         sys.exit("Invalid job role name [%s]!" % args.job_name)
@@ -273,7 +275,7 @@ if __name__ == "__main__":
   parser.add_argument(
       "--batch_size", "-b",
       type=int,
-      default=100,
+      default=16,
       help="Batch Size"
   )
 
@@ -299,9 +301,9 @@ if __name__ == "__main__":
   )
 
   parser.add_argument(
-      "--num_features", "-f",
+      "--train_image_size", "-t",
       type=int,
-      default=784,
+      default=None,
       help="Input features for cnn."
   )
 
